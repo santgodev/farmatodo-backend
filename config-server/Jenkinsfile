@@ -16,7 +16,7 @@ pipeline {
         timeout(time: 20, unit: 'MINUTES')
     }
 
-    stages {
+    stages {                   // 👈 AQUÍ empieza el bloque de stages
         stage('Checkout') {
             steps {
                 checkout scm
@@ -45,7 +45,30 @@ pipeline {
                 }
             }
         }
-    }
+
+        // 👇 ESTE STAGE VA AQUÍ DENTRO, no después
+        stage('Deploy') {
+            steps {
+                script {
+                    echo "🚀 Starting Config Server..."
+
+                    sh """
+                        docker rm -f config-server || true
+                        docker run -d --name config-server \
+                            -p 8888:8888 \
+                            --network farmatodo-network \
+                            farmatodo/config-server:latest
+                    """
+
+                    echo "⏳ Waiting for Config Server to be healthy..."
+                    sh """
+                        sleep 10
+                        curl -f http://localhost:8888/actuator/health || exit 1
+                    """
+                }
+            }
+        }
+    }                          // 👈 AQUÍ CIERRA EL BLOQUE DE STAGES
 
     post {
         always {
@@ -68,26 +91,4 @@ pipeline {
             echo "❌ Build failed!"
         }
     }
-    stage('Deploy') {
-    steps {
-        script {
-            echo "🚀 Starting Config Server..."
-
-            sh """
-                docker rm -f config-server || true
-                docker run -d --name config-server \
-                    -p 8888:8888 \
-                    --network farmatodo-network \
-                    farmatodo/config-server:latest
-            """
-
-            echo "⏳ Waiting for Config Server to be healthy..."
-            sh """
-                sleep 10
-                curl -f http://localhost:8888/actuator/health || exit 1
-            """
-        }
-    }
-}
-
 }
