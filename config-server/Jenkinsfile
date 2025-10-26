@@ -1,104 +1,40 @@
-pipeline {
-    agent any
+stage('Deploy') {
+    steps {
+        script {
+            echo "🚀 Deploying ${env.SERVICE_NAME}..."
 
-    tools {
-        jdk 'java17016'
-        maven 'maven399'
-    }
+            // Crear red si no existe
+            sh """
+              docker network inspect ${NETWORK_NAME} >/dev/null 2>&1 || \
+              docker network create ${NETWORK_NAME}
+            """
 
-    environment {
-        SERVICE_NAME = 'config-server'
-        PROJECT_NAME = 'farmatodo'
-        IMAGE_NAME = "${PROJECT_NAME}/${SERVICE_NAME}:latest"
-        NETWORK_NAME = 'farmatodo-network'
-        HOST_PORT = '8889'      // host: puedes abrir http://localhost:8889
-        CONTAINER_PORT = '8888' // dentro del contenedor
-    }
+            // Eliminar contenedor previo si existe
+            sh "docker rm -f ${SERVICE_NAME} || true"
 
-    options {
-        timestamps()
-        timeout(time: 20, unit: 'MINUTES')
-    }
+            // Ejecutar nuevo contenedor
+            sh """
+              docker run -d --name ${SERVICE_NAME} \
+                -p ${HOST_PORT}:${CONTAINER_PORT} \
+                --network ${NETWORK_NAME} \
+                ${IMAGE_NAME}
+            """
 
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Build & Test') {
-            steps {
-                dir("${env.SERVICE_NAME}") {
-                    sh "mvn clean package -DskipTests=false"
-                }
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                dir("${env.SERVICE_NAME}") {
-                    sh "docker build -t ${env.IMAGE_NAME} ."
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                script {
-                    echo "🚀 Deploying ${env.SERVICE_NAME}..."
-
-                    // Crear red si no existe
-                    sh """
-                      docker network inspect ${NETWORK_NAME} >/dev/null 2>&1 || \
-                      docker network create ${NETWORK_NAME}
-                    """
-
-                    // Borrar contenedor previo
-                    sh "docker rm -f ${SERVICE_NAME} || true"
-
-                    // Ejecutar contenedor
-                    sh """
-                      docker run -d --name ${SERVICE_NAME} \
-                        -p ${HOST_PORT}:${CONTAINER_PORT} \
-                        --network ${NETWORK_NAME} \
-                        ${IMAGE_NAME}
-                    """
-
-                    // Esperar a que el servicio responda
-                    echo "⏳ Checking health on http://localhost:${HOST_PORT}/actuator/health ..."
-                    sh """
-                      for i in {1..20}; do
-                        sleep 3
-                        if curl -sf http://localhost:${HOST_PORT}/actuator/health >/dev/null; then
-                          echo "✅ ${SERVICE_NAME} is healthy!"
-                          exit 0
-                        fi
-                        echo "Waiting for service..."
-                      done
-                      echo "❌ ${SERVICE_NAME} did not start in time"
-                      exit 1
-                    """
-                }
-            }
-        }
-    }
-
-    post {
-        always {
-            echo "=========================================="
-            echo "Service: ${env.SERVICE_NAME}"
-            echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
-            echo "Duration: ${currentBuild.durationString}"
-            echo "=========================================="
-            junit allowEmptyResults: true, testResults: "${env.SERVICE_NAME}/target/surefire-reports/*.xml"
-            archiveArtifacts artifacts: "${env.SERVICE_NAME}/target/*.jar", allowEmptyArchive: true, fingerprint: true
-        }
-        success {
-            echo "✅ Build succeeded and service deployed!"
-        }
-        failure {
-            echo "❌ Build or deploy failed!"
+            // 🕓 Esperar hasta 90s que el servidor arranque
+            echo "⏳ Waiting for Config Server to start..."
+            sh """
+              for i in {1..30}; do
+                if curl -sf http://localhost:${HOST_PORT}/actuator/health >/dev/null 2>&1; then
+                  echo "✅ Config Server is healthy!"
+                  exit 0
+                fi
+                echo "⏱️ Attempt \$i - not ready yet, checking logs..."
+                docker logs ${SERVICE_NAME} | tail -n 10
+                sleep 3
+              done
+              echo "❌ Config Server did not become healthy in time"
+              exit 1
+            """
         }
     }
 }
