@@ -14,8 +14,8 @@ pipeline {
     // ========================================================================
     environment {
         // Service identification (UPDATE THIS FOR EACH SERVICE)
-        SERVICE_NAME = 'CHANGE_ME'  // e.g., 'client-service', 'product-service'
-        SERVICE_PORT = '8080'       // e.g., '8081' for client-service
+        SERVICE_NAME = 'config-server'
+        SERVICE_PORT = '8888'
 
         // Docker configuration
         DOCKER_REGISTRY = credentials('docker-registry-url')
