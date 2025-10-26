@@ -10,7 +10,7 @@ pipeline {
         SERVICE_NAME = 'client-service'
         PROJECT_NAME = 'farmatodo'
         DB_CONTAINER = 'test-postgres'
-        DB_PORT = '5433'
+        DB_PORT = '5440'           
         DB_NAME = 'testdb'
         DB_USER = 'postgres'
         DB_PASSWORD = 'postgres'
@@ -38,7 +38,7 @@ pipeline {
                         docker rm -f ${DB_CONTAINER} || true
                     '''
 
-                    // Run a fresh PostgreSQL instance
+                    // Start a clean PostgreSQL instance
                     sh '''
                         docker run -d --name ${DB_CONTAINER} \
                             -e POSTGRES_DB=${DB_NAME} \
@@ -47,8 +47,8 @@ pipeline {
                             -p ${DB_PORT}:5432 postgres:15
                     '''
 
-                    // Wait for PostgreSQL to initialize
-                    echo "⏳ Waiting for PostgreSQL to be ready..."
+                    // Wait for DB to be ready
+                    echo "⏳ Waiting for PostgreSQL to initialize..."
                     sh '''
                         for i in {1..10}; do
                             if docker exec ${DB_CONTAINER} pg_isready -U ${DB_USER} > /dev/null 2>&1; then
@@ -69,7 +69,6 @@ pipeline {
                     script {
                         echo "🏗️ Building ${env.SERVICE_NAME}..."
 
-                        // Set dynamic DB URL for tests
                         def dbUrl = "jdbc:postgresql://localhost:${env.DB_PORT}/${env.DB_NAME}"
                         sh """
                             mvn clean package \
