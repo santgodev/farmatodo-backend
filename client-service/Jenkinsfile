@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        SERVICE_NAME = 'config-server'
+        SERVICE_NAME = 'client-server'
         PROJECT_NAME = 'farmatodo'
     }
 
