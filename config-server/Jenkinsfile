@@ -1,331 +1,48 @@
 // ============================================================================
-// Jenkinsfile Template for Individual Microservices
-// ============================================================================
-// This template can be copied to each microservice directory and customized
-// Usage: Copy this file to <service-name>/Jenkinsfile and update SERVICE_NAME
-// Location: config-server/Jenkinsfile.template (NOT config-service)
+// Jenkinsfile SIMPLE para microservicios Spring Boot
 // ============================================================================
 
 pipeline {
     agent any
+
     tools {
         jdk 'java17016'
         maven 'maven399'
     }
 
-    // ========================================================================
-    // CONFIGURATION - Update these variables for each service
-    // ========================================================================
     environment {
-        // Service identification (UPDATE THIS FOR EACH SERVICE)
-        SERVICE_NAME = 'config-server'
+        SERVICE_NAME = 'config-server'   // ⚙️ cambia esto en cada microservicio
         SERVICE_PORT = '8888'
-
-        // Docker configuration
-        //DOCKER_REGISTRY = credentials('docker-registry-url')
-        //DOCKER_CREDENTIALS = credentials('docker-hub-credentials')
-
-        // Project configuration
         PROJECT_NAME = 'farmatodo'
-        BRANCH_NAME = "${env.GIT_BRANCH?.replaceAll('origin/', '') ?: 'master'}"
-        DEPLOY_ENV = "${BRANCH_NAME == 'master' ? 'prod' : (BRANCH_NAME == 'staging' ? 'staging' : 'dev')}"
-
-        // Build configuration
-        MAVEN_OPTS = '-Xmx1024m -Xms512m'
-        JAVA_HOME = tool name: 'JDK17', type: 'jdk'
-    }
-
-    parameters {
-        booleanParam(
-            name: 'RUN_TESTS',
-            defaultValue: true,
-            description: 'Run unit tests'
-        )
-
-        booleanParam(
-            name: 'RUN_INTEGRATION_TESTS',
-            defaultValue: false,
-            description: 'Run integration tests'
-        )
-
-        booleanParam(
-            name: 'BUILD_DOCKER_IMAGE',
-            defaultValue: true,
-            description: 'Build Docker image'
-        )
-
-        booleanParam(
-            name: 'PUSH_TO_REGISTRY',
-            defaultValue: false,
-            description: 'Push Docker image to registry'
-        )
-
-        booleanParam(
-            name: 'DEPLOY_SERVICE',
-            defaultValue: false,
-            description: 'Deploy this service'
-        )
-
-        choice(
-            name: 'LOG_LEVEL',
-            choices: ['INFO', 'DEBUG', 'WARN'],
-            description: 'Maven build log level'
-        )
     }
 
     options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 30, unit: 'MINUTES')
         timestamps()
-        ansiColor('xterm')
+        timeout(time: 20, unit: 'MINUTES')
     }
 
     stages {
-        stage('Initialize') {
-            steps {
-                script {
-                    echo "=========================================="
-                    echo "Service: ${env.SERVICE_NAME}"
-                    echo "Branch: ${env.BRANCH_NAME}"
-                    echo "Environment: ${env.DEPLOY_ENV}"
-                    echo "Build: #${env.BUILD_NUMBER}"
-                    echo "=========================================="
-                }
-            }
-        }
-
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
                 script {
-                    env.GIT_COMMIT_SHORT = sh(
-                        script: "git rev-parse --short HEAD",
-                        returnStdout: true
-                    ).trim()
+                    echo "🏗️ Building ${env.SERVICE_NAME}..."
+                    sh "mvn clean package -DskipTests=false"
                 }
             }
         }
 
-        stage('Build') {
+        stage('Docker Build') {
             steps {
                 script {
-                    echo "Building ${env.SERVICE_NAME}..."
-
-                    def mavenGoals = 'clean package'
-                    if (!params.RUN_TESTS) {
-                        mavenGoals += ' -DskipTests'
-                    }
-
-                    if (isUnix()) {
-                        sh "./mvnw ${mavenGoals} -B -${params.LOG_LEVEL}"
-                    } else {
-                        bat "mvnw.cmd ${mavenGoals} -B -${params.LOG_LEVEL}"
-                    }
-                }
-            }
-        }
-
-        stage('Unit Tests') {
-            when {
-                expression { params.RUN_TESTS == true }
-            }
-            steps {
-                script {
-                    echo "Running unit tests..."
-
-                    if (isUnix()) {
-                        sh "./mvnw test -B"
-                    } else {
-                        bat "mvnw.cmd test -B"
-                    }
-                }
-            }
-        }
-
-        stage('Integration Tests') {
-            when {
-                expression { params.RUN_INTEGRATION_TESTS == true }
-            }
-            steps {
-                script {
-                    echo "Running integration tests..."
-
-                    // Start test database if needed
-                    sh """
-                        docker-compose -f docker-compose.test.yml up -d || true
-                    """
-
-                    try {
-                        if (isUnix()) {
-                            sh "./mvnw verify -P integration-tests -B"
-                        } else {
-                            bat "mvnw.cmd verify -P integration-tests -B"
-                        }
-                    } finally {
-                        // Stop test database
-                        sh """
-                            docker-compose -f docker-compose.test.yml down || true
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Code Quality') {
-            when {
-                expression { params.RUN_TESTS == true }
-            }
-            steps {
-                script {
-                    echo "Analyzing code quality..."
-
-                    // SonarQube analysis (if configured)
-                    // withSonarQubeEnv('SonarQube') {
-                    //     sh "./mvnw sonar:sonar"
-                    // }
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            when {
-                expression { params.BUILD_DOCKER_IMAGE == true }
-            }
-            steps {
-                script {
-                    echo "Building Docker image..."
-
-                    def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}"
-                    def imageTag = "${env.DEPLOY_ENV}-${env.GIT_COMMIT_SHORT}"
-                    def latestTag = "${env.DEPLOY_ENV}-latest"
-
-                    sh """
-                        docker build \
-                            --build-arg BUILD_DATE=\$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-                            --build-arg VCS_REF=${env.GIT_COMMIT_SHORT} \
-                            --build-arg VERSION=${env.BUILD_NUMBER} \
-                            -t ${imageName}:${imageTag} \
-                            -t ${imageName}:${latestTag} \
-                            .
-                    """
-
-                    env.DOCKER_IMAGE_TAG = imageTag
-                    echo "✓ Docker image built: ${imageName}:${imageTag}"
-                }
-            }
-        }
-
-        stage('Security Scan') {
-            when {
-                expression { params.BUILD_DOCKER_IMAGE == true }
-            }
-            steps {
-                script {
-                    echo "Scanning Docker image for vulnerabilities..."
-
-                    // Trivy scan (if installed)
-                    // sh """
-                    //     trivy image --severity HIGH,CRITICAL \
-                    //         ${env.PROJECT_NAME}/${env.SERVICE_NAME}:${env.DOCKER_IMAGE_TAG}
-                    // """
-                }
-            }
-        }
-
-// stage('Push to Registry') {
-//     when {
-//         expression { params.PUSH_TO_REGISTRY == true }
-//     }
-//     steps {
-//         script {
-//             echo "Pushing Docker image to registry..."
-//             docker.withRegistry("https://${env.DOCKER_REGISTRY}", env.DOCKER_CREDENTIALS) {
-//                 def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}"
-//                 sh "docker push ${imageName}:${env.DOCKER_IMAGE_TAG}"
-//                 sh "docker push ${imageName}:${env.DEPLOY_ENV}-latest"
-//             }
-//             echo "✓ Image pushed successfully"
-//         }
-//     }
-// }
-
-        stage('Deploy') {
-            when {
-                expression { params.DEPLOY_SERVICE == true }
-            }
-            steps {
-                script {
-                    echo "Deploying ${env.SERVICE_NAME} to ${env.DEPLOY_ENV}..."
-
-                    // Deployment logic (customize based on your infrastructure)
-                    // Examples:
-
-                    // Docker Compose deployment
-                    sh """
-                        docker-compose up -d ${env.SERVICE_NAME}
-                    """
-
-                    // Or Kubernetes deployment
-                    // sh """
-                    //     kubectl set image deployment/${env.SERVICE_NAME} \
-                    //         ${env.SERVICE_NAME}=${env.PROJECT_NAME}/${env.SERVICE_NAME}:${env.DOCKER_IMAGE_TAG} \
-                    //         -n ${env.DEPLOY_ENV}
-                    // """
-
-                    echo "Waiting for service to start..."
-                    sleep(15)
-                }
-            }
-        }
-
-        stage('Health Check') {
-            when {
-                expression { params.DEPLOY_SERVICE == true }
-            }
-            steps {
-                script {
-                    echo "Performing health check..."
-
-                    def maxRetries = 10
-                    def healthy = false
-
-                    for (int i = 0; i < maxRetries; i++) {
-                        try {
-                            // Try different health endpoints
-                            sh """
-                                curl -f http://localhost:${env.SERVICE_PORT}/actuator/health || \
-                                curl -f http://localhost:${env.SERVICE_PORT}/health || \
-                                curl -f http://localhost:${env.SERVICE_PORT}/ping
-                            """
-                            healthy = true
-                            echo "✓ Service is healthy"
-                            break
-                        } catch (Exception e) {
-                            echo "⚠ Health check attempt ${i + 1}/${maxRetries} failed"
-                            sleep(5)
-                        }
-                    }
-
-                    if (!healthy) {
-                        error("✗ Service failed health check")
-                    }
-                }
-            }
-        }
-
-        stage('Smoke Tests') {
-            when {
-                expression { params.DEPLOY_SERVICE == true }
-            }
-            steps {
-                script {
-                    echo "Running smoke tests..."
-
-                    // Add service-specific smoke tests here
-                    // Example:
-                    // sh """
-                    //     curl -f http://localhost:${env.SERVICE_PORT}/api/endpoint || exit 1
-                    // """
+                    echo "🐳 Building Docker image..."
+                    def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}:latest"
+                    sh "docker build -t ${imageName} ."
                 }
             }
         }
@@ -335,92 +52,23 @@ pipeline {
         always {
             script {
                 echo "=========================================="
-                echo "Build Summary"
-                echo "=========================================="
                 echo "Service: ${env.SERVICE_NAME}"
                 echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
                 echo "Duration: ${currentBuild.durationString}"
                 echo "=========================================="
             }
 
-            // Publish test results
+            // Guarda resultados y artefactos
             junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-
-            // Archive JAR file
             archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true, fingerprint: true
-
-            // Clean workspace
-            cleanWs(
-                deleteDirs: true,
-                patterns: [
-                    [pattern: 'target/**', type: 'INCLUDE'],
-                    [pattern: '.m2/repository/**', type: 'INCLUDE']
-                ]
-            )
         }
 
         success {
-            script {
-                echo "✓ Build succeeded!"
-
-                // Notification (customize as needed)
-                // slackSend (
-                //     color: 'good',
-                //     message: "SUCCESS: ${env.SERVICE_NAME} build #${env.BUILD_NUMBER} - ${env.BUILD_URL}"
-                // )
-            }
+            echo "✅ Build succeeded!"
         }
 
         failure {
-            script {
-                echo "✗ Build failed!"
-
-                // Notification (customize as needed)
-                // slackSend (
-                //     color: 'danger',
-                //     message: "FAILURE: ${env.SERVICE_NAME} build #${env.BUILD_NUMBER} - ${env.BUILD_URL}"
-                // )
-            }
-        }
-
-        unstable {
-            script {
-                echo "⚠ Build is unstable!"
-            }
+            echo "❌ Build failed!"
         }
     }
 }
-
-// ============================================================================
-// Service-Specific Configuration Examples
-// ============================================================================
-//
-// CLIENT-SERVICE:
-// SERVICE_NAME = 'client-service'
-// SERVICE_PORT = '8081'
-//
-// TOKEN-SERVICE:
-// SERVICE_NAME = 'token-service'
-// SERVICE_PORT = '8082'
-//
-// PRODUCT-SERVICE:
-// SERVICE_NAME = 'product-service'
-// SERVICE_PORT = '8083'
-//
-// CART-SERVICE:
-// SERVICE_NAME = 'cart-service'
-// SERVICE_PORT = '8084'
-//
-// ORDER-SERVICE:
-// SERVICE_NAME = 'order-service'
-// SERVICE_PORT = '8085'
-//
-// API-GATEWAY:
-// SERVICE_NAME = 'api-gateway'
-// SERVICE_PORT = '8080'
-//
-// CONFIG-SERVER:
-// SERVICE_NAME = 'config-server'
-// SERVICE_PORT = '8888'
-//
-// ============================================================================
