@@ -7,11 +7,11 @@ pipeline {
     }
 
     environment {
-        SERVICE_NAME = 'config-server'
-        PROJECT_NAME = 'farmatodo'
-        IMAGE_NAME = "${PROJECT_NAME}/${SERVICE_NAME}:latest"
-        NETWORK_NAME = 'farmatodo-network'
-        HOST_PORT = '8889'
+        SERVICE_NAME   = 'config-server'
+        PROJECT_NAME   = 'farmatodo'
+        IMAGE_NAME     = "${PROJECT_NAME}/${SERVICE_NAME}:latest"
+        NETWORK_NAME   = 'farmatodo-network'
+        HOST_PORT      = '8889'
         CONTAINER_PORT = '8888'
     }
 
@@ -21,62 +21,65 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
+                echo "📦 Cloning repository..."
                 checkout scm
             }
         }
 
         stage('Build & Test') {
             steps {
-                dir("${env.SERVICE_NAME}") {
-                    sh "mvn clean package -DskipTests=false"
+                dir("${SERVICE_NAME}") {
+                    echo "🧪 Building and running tests..."
+                    sh 'mvn clean package -DskipTests=false'
                 }
             }
         }
 
         stage('Docker Build') {
             steps {
-                dir("${env.SERVICE_NAME}") {
-                    sh "docker build -t ${env.IMAGE_NAME} ."
+                dir("${SERVICE_NAME}") {
+                    echo "🐳 Building Docker image..."
+                    sh "docker build -t ${IMAGE_NAME} ."
                 }
             }
         }
 
-        // 👇 ESTE BLOQUE ESTÁ DENTRO DE stages { ... }
         stage('Deploy') {
             steps {
                 script {
-                    echo "🚀 Deploying ${env.SERVICE_NAME}..."
+                    echo "🚀 Deploying ${SERVICE_NAME}..."
 
+                    // Create network if it doesn’t exist
+                    sh "docker network inspect ${NETWORK_NAME} >/dev/null 2>&1 || docker network create ${NETWORK_NAME}"
+
+                    // Remove previous container
+                    sh "docker rm -f ${SERVICE_NAME} >/dev/null 2>&1 || true"
+
+                    // Run new container
                     sh """
-                      docker network inspect ${NETWORK_NAME} >/dev/null 2>&1 || \
-                      docker network create ${NETWORK_NAME}
+                        docker run -d --name ${SERVICE_NAME} \
+                          -p ${HOST_PORT}:${CONTAINER_PORT} \
+                          --network ${NETWORK_NAME} \
+                          ${IMAGE_NAME}
                     """
 
-                    sh "docker rm -f ${SERVICE_NAME} || true"
-
-                    sh """
-                      docker run -d --name ${SERVICE_NAME} \
-                        -p ${HOST_PORT}:${CONTAINER_PORT} \
-                        --network ${NETWORK_NAME} \
-                        ${IMAGE_NAME}
-                    """
-
-                    echo "⏳ Waiting for Config Server to start..."
-                    sh """
-                      for i in {1..30}; do
-                        if curl -sf http://localhost:${HOST_PORT}/actuator/health >/dev/null 2>&1; then
-                          echo "✅ Config Server is healthy!"
-                          exit 0
-                        fi
-                        echo "⏱️ Attempt \$i - not ready yet, checking logs..."
-                        docker logs ${SERVICE_NAME} | tail -n 10
-                        sleep 3
-                      done
-                      echo "❌ Config Server did not become healthy in time"
-                      exit 1
-                    """
+                    echo "⏳ Waiting for ${SERVICE_NAME} to become healthy..."
+                    sh '''
+                        for i in $(seq 1 20); do
+                            if curl -sf http://localhost:'${HOST_PORT}'/actuator/health >/dev/null; then
+                                echo "✅ Service is healthy!"
+                                exit 0
+                            fi
+                            echo "⏱️ Attempt $i: not ready yet..."
+                            sleep 5
+                        done
+                        echo "❌ Service did not become healthy in time"
+                        docker logs '${SERVICE_NAME}' | tail -n 20
+                        exit 1
+                    '''
                 }
             }
         }
@@ -85,12 +88,12 @@ pipeline {
     post {
         always {
             echo "=========================================="
-            echo "Service: ${env.SERVICE_NAME}"
+            echo "Service: ${SERVICE_NAME}"
             echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
             echo "Duration: ${currentBuild.durationString}"
             echo "=========================================="
-            junit allowEmptyResults: true, testResults: "${env.SERVICE_NAME}/target/surefire-reports/*.xml"
-            archiveArtifacts artifacts: "${env.SERVICE_NAME}/target/*.jar", allowEmptyArchive: true, fingerprint: true
+            junit allowEmptyResults: true, testResults: "${SERVICE_NAME}/target/surefire-reports/*.xml"
+            archiveArtifacts artifacts: "${SERVICE_NAME}/target/*.jar", allowEmptyArchive: true, fingerprint: true
         }
         success {
             echo "✅ Build succeeded and service deployed!"
