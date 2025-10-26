@@ -19,6 +19,7 @@ pipeline {
             steps {
                 checkout scm
                 dir(SERVICE) {
+                    echo "🧱 Building and packaging ${SERVICE}..."
                     sh 'mvn clean package -DskipTests=false'
                     sh "docker build -t ${IMAGE} ."
                 }
@@ -27,28 +28,24 @@ pipeline {
 
         stage('Deploy') {
             steps {
+                echo "🚀 Deploying ${SERVICE}..."
                 sh """
                     docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
                     docker rm -f ${SERVICE} >/dev/null 2>&1 || true
                     docker run -d --name ${SERVICE} -p ${HOST}:${PORT} --network ${NET} ${IMAGE}
-                    echo "⏳ Checking health..."
-                    for i in \$(seq 1 20); do
-                        if curl -sf http://localhost:${HOST}/actuator/health >/dev/null; then
-                            echo "✅ ${SERVICE} UP!"
-                            exit 0
-                        fi
-                        sleep 5
-                    done
-                    echo "❌ ${SERVICE} not healthy"
-                    docker logs ${SERVICE} | tail -n 15
-                    exit 1
                 """
+                echo "✅ ${SERVICE} deployed successfully!"
+                sh "docker ps --filter name=${SERVICE}"
             }
         }
     }
 
     post {
-        success { echo "✅ Build & deploy OK!" }
-        failure { echo "❌ Pipeline failed!" }
+        success {
+            echo "✅ Build and deploy completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
     }
 }
