@@ -7,99 +7,48 @@ pipeline {
     }
 
     environment {
-        SERVICE_NAME   = 'config-server'
-        PROJECT_NAME   = 'farmatodo'
-        IMAGE_NAME     = "${PROJECT_NAME}/${SERVICE_NAME}:latest"
-        NETWORK_NAME   = 'farmatodo-network'
-        HOST_PORT      = '8889'
-        CONTAINER_PORT = '8888'
-    }
-
-    options {
-        timestamps()
-        timeout(time: 20, unit: 'MINUTES')
+        SERVICE = 'config-server'
+        IMAGE   = "farmatodo/${SERVICE}:latest"
+        PORT    = '8888'
+        HOST    = '8889'
+        NET     = 'farmatodo-network'
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('Build') {
             steps {
-                echo "📦 Cloning repository..."
                 checkout scm
-            }
-        }
-
-        stage('Build & Test') {
-            steps {
-                dir("${SERVICE_NAME}") {
-                    echo "🧪 Building and running tests..."
+                dir(SERVICE) {
                     sh 'mvn clean package -DskipTests=false'
-                }
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                dir("${SERVICE_NAME}") {
-                    echo "🐳 Building Docker image..."
-                    sh "docker build -t ${IMAGE_NAME} ."
+                    sh "docker build -t ${IMAGE} ."
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-                script {
-                    echo "🚀 Deploying ${SERVICE_NAME}..."
-
-                    // Create network if it doesn’t exist
-                    sh "docker network inspect ${NETWORK_NAME} >/dev/null 2>&1 || docker network create ${NETWORK_NAME}"
-
-                    // Remove previous container
-                    sh "docker rm -f ${SERVICE_NAME} >/dev/null 2>&1 || true"
-
-                    // Run new container
-                    sh """
-                        docker run -d --name ${SERVICE_NAME} \
-                          -p ${HOST_PORT}:${CONTAINER_PORT} \
-                          --network ${NETWORK_NAME} \
-                          ${IMAGE_NAME}
-                    """
-
-                    echo "⏳ Waiting for ${SERVICE_NAME} to become healthy..."
-                    sh '''
-                        for i in $(seq 1 20); do
-                            if curl -sf http://localhost:'${HOST_PORT}'/actuator/health >/dev/null; then
-                                echo "✅ Service is healthy!"
-                                exit 0
-                            fi
-                            echo "⏱️ Attempt $i: not ready yet..."
-                            sleep 5
-                        done
-                        echo "❌ Service did not become healthy in time"
-                        docker logs '${SERVICE_NAME}' | tail -n 20
-                        exit 1
-                    '''
-                }
+                sh """
+                    docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
+                    docker rm -f ${SERVICE} >/dev/null 2>&1 || true
+                    docker run -d --name ${SERVICE} -p ${HOST}:${PORT} --network ${NET} ${IMAGE}
+                    echo "⏳ Checking health..."
+                    for i in \$(seq 1 20); do
+                        if curl -sf http://localhost:${HOST}/actuator/health >/dev/null; then
+                            echo "✅ ${SERVICE} UP!"
+                            exit 0
+                        fi
+                        sleep 5
+                    done
+                    echo "❌ ${SERVICE} not healthy"
+                    docker logs ${SERVICE} | tail -n 15
+                    exit 1
+                """
             }
         }
     }
 
     post {
-        always {
-            echo "=========================================="
-            echo "Service: ${SERVICE_NAME}"
-            echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
-            echo "Duration: ${currentBuild.durationString}"
-            echo "=========================================="
-            junit allowEmptyResults: true, testResults: "${SERVICE_NAME}/target/surefire-reports/*.xml"
-            archiveArtifacts artifacts: "${SERVICE_NAME}/target/*.jar", allowEmptyArchive: true, fingerprint: true
-        }
-        success {
-            echo "✅ Build succeeded and service deployed!"
-        }
-        failure {
-            echo "❌ Build or deploy failed!"
-        }
+        success { echo "✅ Build & deploy OK!" }
+        failure { echo "❌ Pipeline failed!" }
     }
 }
