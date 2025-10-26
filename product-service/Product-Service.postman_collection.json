@@ -1,0 +1,616 @@
+{
+	"info": {
+		"_postman_id": "product-service-collection",
+		"name": "Product Service API",
+		"description": "Complete Postman collection for testing the Product Service API for product search and catalog management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health & Info",
+			"item": [
+				{
+					"name": "Ping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/ping",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"ping"
+							]
+						},
+						"description": "Simple health check endpoint that returns 'pong'"
+					},
+					"response": []
+				}
+			],
+			"description": "Public endpoints for health checks"
+		},
+		{
+			"name": "Low Stock Products",
+			"item": [
+				{
+					"name": "Get Products with Stock < 10",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products/low-stock?maxStock=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"low-stock"
+							],
+							"query": [
+								{
+									"key": "maxStock",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get all active products with stock less than 10, ordered by stock ascending"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Products with Stock < 5",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products/low-stock?maxStock=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"low-stock"
+							],
+							"query": [
+								{
+									"key": "maxStock",
+									"value": "5"
+								}
+							]
+						},
+						"description": "Get all active products with stock less than 5, ordered by stock ascending"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Products with Stock < 50",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products/low-stock?maxStock=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"low-stock"
+							],
+							"query": [
+								{
+									"key": "maxStock",
+									"value": "50"
+								}
+							]
+						},
+						"description": "Get all active products with stock less than 50, ordered by stock ascending"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Products with Stock < 0 (Invalid - uses 0)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products/low-stock?maxStock=-5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"low-stock"
+							],
+							"query": [
+								{
+									"key": "maxStock",
+									"value": "-5"
+								}
+							]
+						},
+						"description": "Test with invalid negative maxStock - should be converted to 0"
+					},
+					"response": []
+				},
+				{
+					"name": "Low Stock - Missing API Key (Should Fail)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products/low-stock?maxStock=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products",
+								"low-stock"
+							],
+							"query": [
+								{
+									"key": "maxStock",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Test without Authorization header - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for finding products with low stock levels"
+		},
+		{
+			"name": "Product Search - Success Cases",
+			"item": [
+				{
+					"name": "Search Products - Aspirin",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=aspirin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "aspirin"
+								}
+							]
+						},
+						"description": "Search for products containing 'aspirin' in name or description"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Products - Pain",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=pain",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "pain"
+								}
+							]
+						},
+						"description": "Search for products containing 'pain' in name or description"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Products - Vitamin",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=vitamin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "vitamin"
+								}
+							]
+						},
+						"description": "Search for products containing 'vitamin' in name or description"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Products - Empty Query (All Products)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							]
+						},
+						"description": "Search with empty query returns all active products with stock > minStock"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Products - Case Insensitive",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=ASPIRIN",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "ASPIRIN"
+								}
+							]
+						},
+						"description": "Search is case-insensitive - 'ASPIRIN' should match 'aspirin', 'Aspirin', etc."
+					},
+					"response": []
+				},
+				{
+					"name": "Search Products - Partial Match",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=aspi",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "aspi"
+								}
+							]
+						},
+						"description": "Partial match - 'aspi' should match 'aspirin'"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Products - No Results",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=nonexistentproduct12345",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "nonexistentproduct12345"
+								}
+							]
+						},
+						"description": "Search with no matching results should return empty array"
+					},
+					"response": []
+				}
+			],
+			"description": "Successful product search operations"
+		},
+		{
+			"name": "Authentication Errors",
+			"item": [
+				{
+					"name": "Search - Missing API Key",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=aspirin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "aspirin"
+								}
+							]
+						},
+						"description": "Test without Authorization header - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				},
+				{
+					"name": "Search - Invalid API Key",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey wrong-api-key"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=aspirin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "aspirin"
+								}
+							]
+						},
+						"description": "Test with invalid API key - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				},
+				{
+					"name": "Search - Wrong Auth Format",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer product-service-api-key-change-in-production"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/products?query=aspirin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"products"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "aspirin"
+								}
+							]
+						},
+						"description": "Test with wrong authorization format (Bearer instead of ApiKey) - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for API key authentication errors"
+		},
+		{
+			"name": "Search Analytics Tests",
+			"item": [
+				{
+					"name": "Multiple Searches for Analytics",
+					"item": [
+						{
+							"name": "Search 1 - Track in Logs",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "ApiKey {{apiKey}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/products?query=aspirin",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "aspirin"
+										}
+									]
+								},
+								"description": "First search - will be logged asynchronously to search_logs table"
+							},
+							"response": []
+						},
+						{
+							"name": "Search 2 - Track in Logs",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "ApiKey {{apiKey}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/products?query=vitamin",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "vitamin"
+										}
+									]
+								},
+								"description": "Second search - will be logged asynchronously"
+							},
+							"response": []
+						},
+						{
+							"name": "Search 3 - Track in Logs",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "ApiKey {{apiKey}}"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/products?query=pain relief",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"products"
+									],
+									"query": [
+										{
+											"key": "query",
+											"value": "pain relief"
+										}
+									]
+								},
+								"description": "Third search - will be logged asynchronously"
+							},
+							"response": []
+						}
+					],
+					"description": "Run multiple searches to test async logging. Check search_logs table in database to verify all searches were logged."
+				}
+			],
+			"description": "Tests for search analytics and async logging"
+		},
+		{
+			"name": "Database Verification",
+			"item": [],
+			"description": "After running searches, verify in database:\n\n```sql\n-- Check products table\nSELECT * FROM products WHERE status = 'ACTIVE' AND stock > 0;\n\n-- Check search logs (async)\nSELECT * FROM search_logs ORDER BY searched_at DESC LIMIT 10;\n\n-- Popular searches\nSELECT search_term, COUNT(*) as search_count \nFROM search_logs \nGROUP BY search_term \nORDER BY search_count DESC;\n```"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Check for transaction ID in response headers",
+					"if (pm.response.headers.has('X-Transaction-Id')) {",
+					"    console.log('Transaction ID: ' + pm.response.headers.get('X-Transaction-Id'));",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8083",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "product-service-api-key-change-in-production",
+			"type": "string"
+		}
+	]
+}

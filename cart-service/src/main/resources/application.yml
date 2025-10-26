@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: cart-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5434/cartdb
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+server:
+  port: 8084
+
+# API Key for authentication
+api:
+  key: cart-service-api-key-change-in-production
+
+# External services configuration
+services:
+  product:
+    url: http://localhost:8083
+    apiKey: product-service-api-key-change-in-production
+
+# Logging configuration
+logging:
+  level:
+    com.farmatodo.cart_service: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{transactionId}] %-5level %logger{36} - %msg%n"

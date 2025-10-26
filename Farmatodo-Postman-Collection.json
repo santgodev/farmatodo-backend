@@ -1,0 +1,1361 @@
+{
+	"info": {
+		"_postman_id": "farmatodo-microservices-2025",
+		"name": "Farmatodo Microservices",
+		"description": "Complete API collection for Farmatodo microservices platform including API Gateway, Client Service, Token Service, Product Service, Cart Service, and Order Service with payment processing",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "API Gateway",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/api/gateway/health",
+							"host": ["{{gateway_url}}"],
+							"path": ["api", "gateway", "health"]
+						}
+					}
+				},
+				{
+					"name": "Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/api/gateway/info",
+							"host": ["{{gateway_url}}"],
+							"path": ["api", "gateway", "info"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Client Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{client_service_url}}/api/clients/health",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients", "health"]
+						}
+					}
+				},
+				{
+					"name": "Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{client_service_url}}/api/clients/info",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients", "info"]
+						}
+					}
+				},
+				{
+					"name": "Create Client",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"client_id\", jsonData.id);",
+									"    pm.environment.set(\"client_email\", jsonData.email);",
+									"    console.log(\"Client ID saved: \" + jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{client_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Juan Perez\",\n  \"email\": \"juan.perez@example.com\",\n  \"phone\": \"+573001234567\",\n  \"address\": \"Calle 123 #45-67, Bogotá\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{client_service_url}}/api/clients",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients"]
+						}
+					}
+				},
+				{
+					"name": "Get Client by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{client_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{client_service_url}}/api/clients/{{client_id}}",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients", "{{client_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Client by Email",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{client_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{client_service_url}}/api/clients/email/{{client_email}}",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients", "email", "{{client_email}}"]
+						}
+					}
+				},
+				{
+					"name": "Get All Clients",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{client_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{client_service_url}}/api/clients",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients"]
+						}
+					}
+				},
+				{
+					"name": "Update Client",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{client_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Juan Perez Updated\",\n  \"phone\": \"+573009876543\",\n  \"address\": \"Calle 456 #78-90, Bogotá\"\n}"
+						},
+						"url": {
+							"raw": "{{client_service_url}}/api/clients/{{client_id}}",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients", "{{client_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Client (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{client_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{client_service_url}}/api/clients/{{client_id}}",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients", "{{client_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Token Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{token_service_url}}/api/tokens/health",
+							"host": ["{{token_service_url}}"],
+							"path": ["api", "tokens", "health"]
+						}
+					}
+				},
+				{
+					"name": "Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{token_service_url}}/api/tokens/info",
+							"host": ["{{token_service_url}}"],
+							"path": ["api", "tokens", "info"]
+						}
+					}
+				},
+				{
+					"name": "Ping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{token_service_url}}/ping",
+							"host": ["{{token_service_url}}"],
+							"path": ["ping"]
+						}
+					}
+				},
+				{
+					"name": "Tokenize Card",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"payment_token\", jsonData.token);",
+									"    pm.environment.set(\"card_last4\", jsonData.last4);",
+									"    console.log(\"Payment token saved: \" + jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{token_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4532015112830366\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/25\",\n  \"cardholderName\": \"Juan Perez\"\n}"
+						},
+						"url": {
+							"raw": "{{token_service_url}}/api/tokens/tokenize",
+							"host": ["{{token_service_url}}"],
+							"path": ["api", "tokens", "tokenize"]
+						},
+						"description": "Tokenize a credit card using Luhn-valid test card number"
+					}
+				}
+			]
+		},
+		{
+			"name": "Product Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{product_service_url}}/products/ping",
+							"host": ["{{product_service_url}}"],
+							"path": ["products", "ping"]
+						}
+					}
+				},
+				{
+					"name": "Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{product_service_url}}/products/info",
+							"host": ["{{product_service_url}}"],
+							"path": ["products", "info"]
+						}
+					}
+				},
+				{
+					"name": "Search Products",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.length > 0) {",
+									"        pm.environment.set(\"product_id\", jsonData[0].id);",
+									"        pm.environment.set(\"product_name\", jsonData[0].name);",
+									"        pm.environment.set(\"product_price\", jsonData[0].price);",
+									"        console.log(\"Product saved: \" + jsonData[0].name);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{product_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{product_service_url}}/products?query=aspirin",
+							"host": ["{{product_service_url}}"],
+							"path": ["products"],
+							"query": [
+								{
+									"key": "query",
+									"value": "aspirin"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Low Stock Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{product_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{product_service_url}}/products/low-stock?maxStock=10",
+							"host": ["{{product_service_url}}"],
+							"path": ["products", "low-stock"],
+							"query": [
+								{
+									"key": "maxStock",
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Product",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"created_product_id\", jsonData.id);",
+									"    pm.environment.set(\"created_product_name\", jsonData.name);",
+									"    console.log(\"Product created with ID: \" + jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{product_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Aspirin 500mg\",\n  \"description\": \"Pain reliever and fever reducer\",\n  \"price\": 15.50,\n  \"stock\": 100,\n  \"category\": \"Pain Relief\",\n  \"sku\": \"ASP-500-100\"\n}"
+						},
+						"url": {
+							"raw": "{{product_service_url}}/products",
+							"host": ["{{product_service_url}}"],
+							"path": ["products"]
+						},
+						"description": "Create a new product in the catalog"
+					}
+				},
+				{
+					"name": "Get Product by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{product_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{product_service_url}}/products/{{product_id}}",
+							"host": ["{{product_service_url}}"],
+							"path": ["products", "{{product_id}}"]
+						},
+						"description": "Retrieve product details by ID"
+					}
+				},
+				{
+					"name": "Get All Products",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{product_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{product_service_url}}/products/all",
+							"host": ["{{product_service_url}}"],
+							"path": ["products", "all"]
+						},
+						"description": "Retrieve all products in the catalog"
+					}
+				},
+				{
+					"name": "Get Products by IDs (Batch)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{product_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[1, 2, 3]"
+						},
+						"url": {
+							"raw": "{{product_service_url}}/products/by-ids",
+							"host": ["{{product_service_url}}"],
+							"path": ["products", "by-ids"]
+						},
+						"description": "Retrieve multiple products by their IDs (used by order-service)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Cart Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{cart_service_url}}/carts/health",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "health"]
+						}
+					}
+				},
+				{
+					"name": "Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{cart_service_url}}/carts/info",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "info"]
+						}
+					}
+				},
+				{
+					"name": "Get or Create Cart",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"cart_id\", jsonData.cartId);",
+									"    pm.environment.set(\"cart_total\", jsonData.totalAmount);",
+									"    console.log(\"Cart ID saved: \" + jsonData.cartId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}"]
+						},
+						"description": "Get existing cart or create new cart for user"
+					}
+				},
+				{
+					"name": "Add Item to Cart",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Use saved product details or defaults",
+									"if (!pm.environment.get(\"product_id\")) {",
+									"    pm.environment.set(\"product_id\", 1);",
+									"    pm.environment.set(\"product_name\", \"Aspirin 500mg\");",
+									"    pm.environment.set(\"product_price\", 15.50);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productId\": {{product_id}},\n  \"productName\": \"{{product_name}}\",\n  \"unitPrice\": {{product_price}},\n  \"quantity\": 2\n}"
+						},
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}/items",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}", "items"]
+						},
+						"description": "Add a product to the cart. If product already exists, quantity will be incremented."
+					}
+				},
+				{
+					"name": "Add Another Item",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productId\": 2,\n  \"productName\": \"Vitamin C 1000mg\",\n  \"unitPrice\": 25.00,\n  \"quantity\": 1\n}"
+						},
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}/items",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}", "items"]
+						}
+					}
+				},
+				{
+					"name": "Update Item Quantity",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"quantity\": 5\n}"
+						},
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}/items/{{product_id}}",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}", "items", "{{product_id}}"]
+						},
+						"description": "Update quantity of product in cart"
+					}
+				},
+				{
+					"name": "Remove Item from Cart",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}/items/2",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}", "items", "2"]
+						},
+						"description": "Remove product from cart"
+					}
+				},
+				{
+					"name": "Clear Cart",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}"]
+						},
+						"description": "Remove all items from cart"
+					}
+				},
+				{
+					"name": "Checkout Cart",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}/checkout",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}", "checkout"]
+						},
+						"description": "Mark cart as COMPLETED, ready for payment processing"
+					}
+				}
+			]
+		},
+		{
+			"name": "Order Service",
+			"item": [
+				{
+					"name": "Ping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{order_service_url}}/orders/ping",
+							"host": ["{{order_service_url}}"],
+							"path": ["orders", "ping"]
+						},
+						"description": "Health check endpoint"
+					}
+				},
+				{
+					"name": "Create Order",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"order_id\", jsonData.orderId);",
+									"    pm.environment.set(\"order_status\", jsonData.status);",
+									"    pm.environment.set(\"order_transaction_id\", jsonData.transactionId);",
+									"    console.log(\"Order ID saved: \" + jsonData.orderId);",
+									"    console.log(\"Order status: \" + jsonData.status);",
+									"    console.log(\"Payment attempts: \" + jsonData.paymentAttempts);",
+									"    ",
+									"    pm.test(\"Order created successfully\", function () {",
+									"        pm.expect(jsonData.orderId).to.exist;",
+									"    });",
+									"    ",
+									"    pm.test(\"Order has valid status\", function () {",
+									"        pm.expect(jsonData.status).to.be.oneOf(['APPROVED', 'REJECTED']);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Ensure we have required variables",
+									"if (!pm.environment.get(\"client_id\")) {",
+									"    console.error(\"client_id not set. Please create a client first.\");",
+									"}",
+									"if (!pm.environment.get(\"payment_token\")) {",
+									"    console.error(\"payment_token not set. Please tokenize a card first.\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"clientId\": {{client_id}},\n  \"token\": \"{{payment_token}}\",\n  \"products\": [\n    {\n      \"productId\": {{product_id}},\n      \"productName\": \"{{product_name}}\",\n      \"unitPrice\": {{product_price}},\n      \"quantity\": 2\n    },\n    {\n      \"productId\": 2,\n      \"productName\": \"Vitamin C 1000mg\",\n      \"unitPrice\": 25.00,\n      \"quantity\": 1\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{order_service_url}}/orders",
+							"host": ["{{order_service_url}}"],
+							"path": ["orders"]
+						},
+						"description": "Create a new order and process payment with automatic retry logic"
+					}
+				},
+				{
+					"name": "Get Order by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    pm.test(\"Order retrieved successfully\", function () {",
+									"        pm.expect(jsonData.orderId).to.exist;",
+									"    });",
+									"    ",
+									"    pm.test(\"Order has transaction ID\", function () {",
+									"        pm.expect(jsonData.transactionId).to.exist;",
+									"    });",
+									"    ",
+									"    console.log(\"Order Status: \" + jsonData.status);",
+									"    console.log(\"Total Amount: \" + jsonData.totalAmount);",
+									"    console.log(\"Payment Attempts: \" + jsonData.paymentAttempts);",
+									"    if (jsonData.rejectionReason) {",
+									"        console.log(\"Rejection Reason: \" + jsonData.rejectionReason);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{order_service_url}}/orders/{{order_id}}",
+							"host": ["{{order_service_url}}"],
+							"path": ["orders", "{{order_id}}"]
+						},
+						"description": "Retrieve order details including payment status and transaction tracking"
+					}
+				}
+			]
+		},
+		{
+			"name": "Complete E2E Flow",
+			"item": [
+				{
+					"name": "Step 1 - Create Client",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"client_id\", jsonData.id);",
+									"    pm.environment.set(\"client_email\", jsonData.email);",
+									"    pm.environment.set(\"client_name\", jsonData.name);",
+									"    ",
+									"    pm.test(\"Client has ID\", function () {",
+									"        pm.expect(jsonData.id).to.exist;",
+									"    });",
+									"    ",
+									"    console.log(\"✅ Step 1: Client created successfully\");",
+									"    console.log(\"   Client ID: \" + jsonData.id);",
+									"    console.log(\"   Email: \" + jsonData.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{client_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Maria Garcia\",\n  \"email\": \"maria.garcia@farmatodo.com\",\n  \"phone\": \"+573101234567\",\n  \"address\": \"Carrera 10 #20-30, Medellín\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"9876543210\"\n}"
+						},
+						"url": {
+							"raw": "{{client_service_url}}/api/clients",
+							"host": ["{{client_service_url}}"],
+							"path": ["api", "clients"]
+						}
+					}
+				},
+				{
+					"name": "Step 2 - Search Products",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.length > 0) {",
+									"        pm.environment.set(\"product_id\", jsonData[0].id);",
+									"        pm.environment.set(\"product_name\", jsonData[0].name);",
+									"        pm.environment.set(\"product_price\", jsonData[0].price);",
+									"        ",
+									"        pm.test(\"Products found\", function () {",
+									"            pm.expect(jsonData.length).to.be.above(0);",
+									"        });",
+									"        ",
+									"        console.log(\"✅ Step 2: Products found\");",
+									"        console.log(\"   Product ID: \" + jsonData[0].id);",
+									"        console.log(\"   Product Name: \" + jsonData[0].name);",
+									"        console.log(\"   Price: $\" + jsonData[0].price);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{product_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{product_service_url}}/products?query=vitamin",
+							"host": ["{{product_service_url}}"],
+							"path": ["products"],
+							"query": [
+								{
+									"key": "query",
+									"value": "vitamin"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Step 3 - Add Products to Cart",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"cart_id\", jsonData.cartId);",
+									"    pm.environment.set(\"cart_total\", jsonData.totalAmount);",
+									"    ",
+									"    pm.test(\"Cart has items\", function () {",
+									"        pm.expect(jsonData.items.length).to.be.above(0);",
+									"    });",
+									"    ",
+									"    console.log(\"✅ Step 3: Product added to cart\");",
+									"    console.log(\"   Cart ID: \" + jsonData.cartId);",
+									"    console.log(\"   Items: \" + jsonData.items.length);",
+									"    console.log(\"   Total: $\" + jsonData.totalAmount);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productId\": {{product_id}},\n  \"productName\": \"{{product_name}}\",\n  \"unitPrice\": {{product_price}},\n  \"quantity\": 3\n}"
+						},
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}/items",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}", "items"]
+						}
+					}
+				},
+				{
+					"name": "Step 4 - Add Second Product",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"cart_total\", jsonData.totalAmount);",
+									"    ",
+									"    console.log(\"✅ Step 4: Second product added\");",
+									"    console.log(\"   Items: \" + jsonData.items.length);",
+									"    console.log(\"   Total: $\" + jsonData.totalAmount);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productId\": 2,\n  \"productName\": \"Omega 3 Fish Oil\",\n  \"unitPrice\": 45.00,\n  \"quantity\": 2\n}"
+						},
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}/items",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}", "items"]
+						}
+					}
+				},
+				{
+					"name": "Step 5 - Review Cart",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    pm.test(\"Cart has multiple items\", function () {",
+									"        pm.expect(jsonData.items.length).to.be.above(1);",
+									"    });",
+									"    ",
+									"    console.log(\"✅ Step 5: Cart reviewed\");",
+									"    console.log(\"   Items: \" + jsonData.items.length);",
+									"    console.log(\"   Total: $\" + jsonData.totalAmount);",
+									"    console.log(\"   Status: \" + jsonData.status);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{cart_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{cart_service_url}}/carts/{{client_id}}",
+							"host": ["{{cart_service_url}}"],
+							"path": ["carts", "{{client_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Step 6 - Tokenize Payment Card",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"payment_token\", jsonData.token);",
+									"    pm.environment.set(\"card_last4\", jsonData.last4);",
+									"    ",
+									"    pm.test(\"Token generated\", function () {",
+									"        pm.expect(jsonData.token).to.exist;",
+									"    });",
+									"    ",
+									"    console.log(\"✅ Step 6: Card tokenized successfully\");",
+									"    console.log(\"   Token: \" + jsonData.token);",
+									"    console.log(\"   Last 4 digits: \" + jsonData.last4);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{token_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4532015112830366\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/26\",\n  \"cardholderName\": \"{{client_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{token_service_url}}/api/tokens/tokenize",
+							"host": ["{{token_service_url}}"],
+							"path": ["api", "tokens", "tokenize"]
+						}
+					}
+				},
+				{
+					"name": "Step 7 - Create Order and Process Payment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"order_id\", jsonData.orderId);",
+									"    pm.environment.set(\"order_status\", jsonData.status);",
+									"    pm.environment.set(\"order_transaction_id\", jsonData.transactionId);",
+									"    ",
+									"    pm.test(\"Order has valid status\", function () {",
+									"        pm.expect(jsonData.status).to.be.oneOf(['APPROVED', 'REJECTED']);",
+									"    });",
+									"    ",
+									"    console.log(\"\\n\" + \"=\".repeat(60));",
+									"    console.log(\"✅ Step 7: Order created and payment processed!\");",
+									"    console.log(\"=\".repeat(60));",
+									"    console.log(\"   Order ID: \" + jsonData.orderId);",
+									"    console.log(\"   Status: \" + jsonData.status);",
+									"    console.log(\"   Total Amount: $\" + jsonData.totalAmount);",
+									"    console.log(\"   Payment Attempts: \" + jsonData.paymentAttempts);",
+									"    console.log(\"   Transaction ID: \" + jsonData.transactionId);",
+									"    ",
+									"    if (jsonData.status === 'APPROVED') {",
+									"        console.log(\"   🎉 PAYMENT APPROVED!\");",
+									"    } else {",
+									"        console.log(\"   ❌ PAYMENT REJECTED\");",
+									"        if (jsonData.rejectionReason) {",
+									"            console.log(\"   Reason: \" + jsonData.rejectionReason);",
+									"        }",
+									"    }",
+									"    console.log(\"=\".repeat(60));",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"console.log(\"Creating order with:\");",
+									"console.log(\"   Client ID: \" + pm.environment.get(\"client_id\"));",
+									"console.log(\"   Payment Token: \" + pm.environment.get(\"payment_token\"));",
+									"console.log(\"   Cart Total: $\" + pm.environment.get(\"cart_total\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"clientId\": {{client_id}},\n  \"token\": \"{{payment_token}}\",\n  \"products\": [\n    {\n      \"productId\": {{product_id}},\n      \"productName\": \"{{product_name}}\",\n      \"unitPrice\": {{product_price}},\n      \"quantity\": 3\n    },\n    {\n      \"productId\": 2,\n      \"productName\": \"Omega 3 Fish Oil\",\n      \"unitPrice\": 45.00,\n      \"quantity\": 2\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{order_service_url}}/orders",
+							"host": ["{{order_service_url}}"],
+							"path": ["orders"]
+						}
+					}
+				},
+				{
+					"name": "Step 8 - Get Final Order Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    ",
+									"    console.log(\"\\n\" + \"=\".repeat(60));",
+									"    console.log(\"✅ Step 8: Final order details retrieved\");",
+									"    console.log(\"=\".repeat(60));",
+									"    console.log(\"   Order ID: \" + jsonData.orderId);",
+									"    console.log(\"   Client ID: \" + jsonData.clientId);",
+									"    console.log(\"   Status: \" + jsonData.status);",
+									"    console.log(\"   Total Amount: $\" + jsonData.totalAmount);",
+									"    console.log(\"   Payment Attempts: \" + jsonData.paymentAttempts);",
+									"    console.log(\"   Transaction ID: \" + jsonData.transactionId);",
+									"    console.log(\"   Created At: \" + jsonData.createdAt);",
+									"    console.log(\"   Items: \" + jsonData.items.length);",
+									"    ",
+									"    jsonData.items.forEach((item, index) => {",
+									"        console.log(\"   Item \" + (index + 1) + \": \" + item.productName + \" x\" + item.quantity + \" = $\" + item.subtotal);",
+									"    });",
+									"    ",
+									"    console.log(\"\\n\" + \"🎊\".repeat(30));",
+									"    console.log(\"   COMPLETE E2E FLOW FINISHED SUCCESSFULLY!\");",
+									"    console.log(\"🎊\".repeat(30) + \"\\n\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{order_service_url}}/orders/{{order_id}}",
+							"host": ["{{order_service_url}}"],
+							"path": ["orders", "{{order_id}}"]
+						}
+					}
+				}
+			],
+			"description": "Complete end-to-end flow demonstrating all microservices working together:\n1. Create a new client\n2. Search for products\n3. Add products to cart\n4. Add another product\n5. Review cart\n6. Tokenize payment card\n7. Create order and process payment (with automatic retry)\n8. Get final order details\n\nRun these requests in sequence to see the complete flow!"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "gateway_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "client_service_url",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "token_service_url",
+			"value": "http://localhost:8082",
+			"type": "string"
+		},
+		{
+			"key": "product_service_url",
+			"value": "http://localhost:8083",
+			"type": "string"
+		},
+		{
+			"key": "cart_service_url",
+			"value": "http://localhost:8084",
+			"type": "string"
+		},
+		{
+			"key": "order_service_url",
+			"value": "http://localhost:8085",
+			"type": "string"
+		},
+		{
+			"key": "client_api_key",
+			"value": "client-service-api-key-change-in-production",
+			"type": "string"
+		},
+		{
+			"key": "token_api_key",
+			"value": "your-secret-api-key-change-in-production",
+			"type": "string"
+		},
+		{
+			"key": "product_api_key",
+			"value": "product-service-api-key-change-in-production",
+			"type": "string"
+		},
+		{
+			"key": "cart_api_key",
+			"value": "cart-service-api-key-change-in-production",
+			"type": "string"
+		}
+	]
+}

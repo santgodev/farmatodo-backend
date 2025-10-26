@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del \"C:\\Users\\santgodev\\OneDrive\\Escritorio\\Farmatodo\\token-service\\src\\main\\resources\\application.properties\")",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(timeout 10 bash -c 'until curl -s http://localhost:8083/products/ping > /dev/null 2>&1; do sleep 1; done && echo \"\"Service is ready!\"\"')",
+      "Bash(mkdir:*)",
+      "Bash(test:*)",
+      "Bash(mvn clean package:*)",
+      "Bash(./mvnw.cmd clean:*)",
+      "Bash(cat:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(curl:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(timeout 20 bash -c 'until curl -s http://localhost:8084/carts/health > /dev/null 2>&1; do sleep 1; done && echo \"\"Cart service is ready!\"\"')",
+      "Bash(python:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(find:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,355 @@
+version: '3.8'
+
+services:
+  # Config Server
+  config-server:
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    container_name: farmatodo-config-server
+    environment:
+      SPRING_APPLICATION_NAME: config-server
+      SERVER_PORT: 8888
+      SPRING_CLOUD_CONFIG_SERVER_GIT_URI: https://github.com/santgodev/farmatodo-config-service
+      SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: master
+      SPRING_CLOUD_CONFIG_SERVER_GIT_CLONE_ON_START: "true"
+      # GitHub authentication - replace with your personal access token
+      SPRING_CLOUD_CONFIG_SERVER_GIT_USERNAME: ${GITHUB_USERNAME:-santgodev}
+    ports:
+      - "8888:8888"
+    networks:
+      - farmatodo-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8888/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  # PostgreSQL Database for Client Service
+  client-db:
+    image: postgres:16-alpine
+    container_name: farmatodo-client-db
+    environment:
+      POSTGRES_DB: clientdb
+      POSTGRES_USER: clientuser
+      POSTGRES_PASSWORD: clientpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - client-db-data:/var/lib/postgresql/data
+    networks:
+      - farmatodo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clientuser -d clientdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Token Service
+  token-db:
+    image: postgres:16-alpine
+    container_name: farmatodo-token-db
+    environment:
+      POSTGRES_DB: tokendb
+      POSTGRES_USER: tokenuser
+      POSTGRES_PASSWORD: tokenpass
+    ports:
+      - "5433:5432"
+    volumes:
+      - token-db-data:/var/lib/postgresql/data
+    networks:
+      - farmatodo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tokenuser -d tokendb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Client Service
+  client-service:
+    build:
+      context: ./client-service
+      dockerfile: Dockerfile
+    container_name: farmatodo-client-service
+    environment:
+      SPRING_APPLICATION_NAME: client-service
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://client-db:5432/clientdb
+      SPRING_DATASOURCE_USERNAME: clientuser
+      SPRING_DATASOURCE_PASSWORD: clientpass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SERVER_PORT: 8081
+      API_KEY: client-service-api-key-change-in-production
+    ports:
+      - "8081:8081"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      client-db:
+        condition: service_healthy
+    networks:
+      - farmatodo-network
+    restart: unless-stopped
+
+  # Token Service
+  token-service:
+    build:
+      context: ./token-service
+      dockerfile: Dockerfile
+    container_name: farmatodo-token-service
+    environment:
+      SPRING_APPLICATION_NAME: token-service
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://token-db:5432/tokendb
+      SPRING_DATASOURCE_USERNAME: tokenuser
+      SPRING_DATASOURCE_PASSWORD: tokenpass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SERVER_PORT: 8082
+      API_KEY: your-secret-api-key-change-in-production
+      ENCRYPTION_SECRET_KEY: MySecretKey1234567890123456789012
+      TOKEN_REJECTIONPROBABILITY: 0.3
+      PAYMENT_REJECTIONPROBABILITY: 0.3
+      PAYMENT_RETRYCOUNT: 3
+      EMAIL_ENABLED: "false"
+      EMAIL_FROM: noreply@farmatodo.com
+    ports:
+      - "8082:8082"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      token-db:
+        condition: service_healthy
+    networks:
+      - farmatodo-network
+    restart: unless-stopped
+
+  # PostgreSQL Database for Product Service
+  product-db:
+    image: postgres:16-alpine
+    container_name: farmatodo-product-db
+    environment:
+      POSTGRES_DB: productdb
+      POSTGRES_USER: productuser
+      POSTGRES_PASSWORD: productpass
+    ports:
+      - "5434:5432"
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+    networks:
+      - farmatodo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U productuser -d productdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Database for Cart Service
+  cart-db:
+    image: postgres:16-alpine
+    container_name: farmatodo-cart-db
+    environment:
+      POSTGRES_DB: cartdb
+      POSTGRES_USER: cartuser
+      POSTGRES_PASSWORD: cartpass
+    ports:
+      - "5435:5432"
+    volumes:
+      - cart-db-data:/var/lib/postgresql/data
+    networks:
+      - farmatodo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cartuser -d cartdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Product Service
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    container_name: farmatodo-product-service
+    environment:
+      SPRING_APPLICATION_NAME: product-service
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://product-db:5432/productdb
+      SPRING_DATASOURCE_USERNAME: productuser
+      SPRING_DATASOURCE_PASSWORD: productpass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SERVER_PORT: 8083
+      API_KEY: product-service-api-key-change-in-production
+      PRODUCT_MINSTOCK: 0
+    ports:
+      - "8083:8083"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      product-db:
+        condition: service_healthy
+    networks:
+      - farmatodo-network
+    restart: unless-stopped
+
+  # Cart Service
+  cart-service:
+    build:
+      context: ./cart-service
+      dockerfile: Dockerfile
+    container_name: farmatodo-cart-service
+    environment:
+      SPRING_APPLICATION_NAME: cart-service
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://cart-db:5432/cartdb
+      SPRING_DATASOURCE_USERNAME: cartuser
+      SPRING_DATASOURCE_PASSWORD: cartpass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SERVER_PORT: 8084
+      API_KEY: cart-service-api-key-change-in-production
+      SERVICES_PRODUCT_URL: http://product-service:8083
+      SERVICES_PRODUCT_APIKEY: product-service-api-key-change-in-production
+    ports:
+      - "8084:8084"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      cart-db:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+    networks:
+      - farmatodo-network
+    restart: unless-stopped
+
+  # PostgreSQL Database for Order Service
+  order-db:
+    image: postgres:16-alpine
+    container_name: farmatodo-order-db
+    environment:
+      POSTGRES_DB: orderdb
+      POSTGRES_USER: orderuser
+      POSTGRES_PASSWORD: orderpass
+    ports:
+      - "5436:5432"
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    networks:
+      - farmatodo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orderuser -d orderdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Order Service
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: farmatodo-order-service
+    environment:
+      SPRING_APPLICATION_NAME: order-service
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://order-db:5432/orderdb
+      SPRING_DATASOURCE_USERNAME: orderuser
+      SPRING_DATASOURCE_PASSWORD: orderpass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SERVER_PORT: 8085
+      API_KEY: order-service-api-key-change-in-production
+      PAYMENT_REJECTIONPROBABILITY: 0.3
+      PAYMENT_RETRYCOUNT: 3
+      SERVICES_CLIENT_URL: http://client-service:8081
+      SERVICES_CLIENT_APIKEY: client-service-api-key-change-in-production
+      SERVICES_TOKEN_URL: http://token-service:8082
+      SERVICES_TOKEN_APIKEY: your-secret-api-key-change-in-production
+      SERVICES_PRODUCT_URL: http://product-service:8083
+      SERVICES_PRODUCT_APIKEY: product-service-api-key-change-in-production
+      SERVICES_CART-SERVICE_URL: http://cart-service:8084
+      SERVICES_CART-SERVICE_API-KEY: cart-service-api-key-change-in-production
+      EMAIL_ENABLED: "false"
+      EMAIL_FROM: noreply@farmatodo.com
+    ports:
+      - "8085:8085"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      order-db:
+        condition: service_healthy
+      client-service:
+        condition: service_started
+      token-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+    networks:
+      - farmatodo-network
+    restart: unless-stopped
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: farmatodo-api-gateway
+    environment:
+      SPRING_APPLICATION_NAME: api-gateway
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+      SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+      SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+      SERVER_PORT: 8080
+      CLIENT_SERVICE_URL: http://client-service:8081
+      TOKEN_SERVICE_URL: http://token-service:8082
+      PRODUCT_SERVICE_URL: http://product-service:8083
+      CART_SERVICE_URL: http://cart-service:8084
+      ORDER_SERVICE_URL: http://order-service:8085
+    ports:
+      - "8080:8080"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      client-service:
+        condition: service_started
+      token-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+    networks:
+      - farmatodo-network
+    restart: unless-stopped
+
+networks:
+  farmatodo-network:
+    driver: bridge
+
+volumes:
+  client-db-data:
+  token-db-data:
+  product-db-data:
+  cart-db-data:
+  order-db-data:

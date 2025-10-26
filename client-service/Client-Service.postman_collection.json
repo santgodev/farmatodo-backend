@@ -1,0 +1,963 @@
+{
+	"info": {
+		"_postman_id": "client-service-collection",
+		"name": "Client Service API",
+		"description": "Complete Postman collection for testing the Client Service API for client registration and management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health & Info",
+			"item": [
+				{
+					"name": "Ping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/clients/ping",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"ping"
+							]
+						},
+						"description": "Simple health check endpoint that returns 'pong'"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/clients/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"clients",
+								"health"
+							]
+						},
+						"description": "Detailed health check including database connectivity status"
+					},
+					"response": []
+				},
+				{
+					"name": "Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/clients/info",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"clients",
+								"info"
+							]
+						},
+						"description": "Get service information and available endpoints"
+					},
+					"response": []
+				}
+			],
+			"description": "Public endpoints for health checks and service information"
+		},
+		{
+			"name": "Client Management - Success Cases",
+			"item": [
+				{
+					"name": "Create Client - John Doe",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.environment.set(\"clientId\", jsonData.id);",
+									"    pm.environment.set(\"clientEmail\", jsonData.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Main Street, New York, NY 10001\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Create a new client with DNI document type"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Jane Smith",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"phone\": \"+9876543210\",\n  \"address\": \"456 Oak Avenue, Los Angeles, CA 90001\",\n  \"documentType\": \"PASSPORT\",\n  \"documentNumber\": \"ABC123456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Create a new client with Passport document type"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Driver License",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Robert Johnson\",\n  \"email\": \"robert.j@example.com\",\n  \"phone\": \"+5551234567\",\n  \"address\": \"789 Pine Street, Chicago, IL 60601\",\n  \"documentType\": \"DRIVER_LICENSE\",\n  \"documentNumber\": \"DL987654321\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Create a new client with Driver License document type"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Retrieve a specific client by ID (uses clientId from environment variable set by Create Client)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client by Email",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clients/email/{{clientEmail}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"email",
+								"{{clientEmail}}"
+							]
+						},
+						"description": "Retrieve a specific client by email address"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Clients",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Retrieve all registered clients"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client - Full Update",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John William Doe\",\n  \"phone\": \"+1234567899\",\n  \"address\": \"999 Updated Street, New York, NY 10002\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Update all updatable fields (name, phone, address) for a client"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client - Partial Update (Name Only)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John D. Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Update only the name field (partial update)"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client - Partial Update (Address Only)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"address\": \"555 New Address Blvd, Miami, FL 33101\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Update only the address field (partial update)"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Client (Soft Delete)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Soft delete a client (sets status to INACTIVE) - Expected: 204 No Content"
+					},
+					"response": []
+				}
+			],
+			"description": "Successful client management operations"
+		},
+		{
+			"name": "Validation Errors",
+			"item": [
+				{
+					"name": "Create Client - Invalid Email Format",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"invalid-email\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Test Street\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with invalid email format - Expected: 400 INVALID_EMAIL"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Invalid Phone Format",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"123\",\n  \"address\": \"123 Test Street\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with invalid phone (too short) - Expected: 400 INVALID_PHONE"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Name Too Short",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"J\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Test Street\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with name too short - Expected: 400 INVALID_NAME"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Address Too Short",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with address too short - Expected: 400 INVALID_ADDRESS"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Invalid Document Type",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Test Street\",\n  \"documentType\": \"INVALID_TYPE\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with invalid document type - Expected: 400 INVALID_DOCUMENT_TYPE"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Document Number Too Short",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Test Street\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with document number too short - Expected: 400 INVALID_DOCUMENT_NUMBER"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Missing Required Fields",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with missing required fields - Expected: 400 validation error"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for various validation error scenarios"
+		},
+		{
+			"name": "Conflict Errors",
+			"item": [
+				{
+					"name": "Create Client - Duplicate Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Another User\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+9999999999\",\n  \"address\": \"999 Different Street\",\n  \"documentType\": \"PASSPORT\",\n  \"documentNumber\": \"XYZ999999\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Try to create client with email that already exists - Expected: 409 EMAIL_ALREADY_EXISTS"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Duplicate Phone",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Another User\",\n  \"email\": \"different@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"999 Different Street\",\n  \"documentType\": \"PASSPORT\",\n  \"documentNumber\": \"XYZ999999\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Try to create client with phone that already exists - Expected: 409 PHONE_ALREADY_EXISTS"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Duplicate Document",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Another User\",\n  \"email\": \"different@example.com\",\n  \"phone\": \"+9999999999\",\n  \"address\": \"999 Different Street\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Try to create client with document that already exists - Expected: 409 DOCUMENT_ALREADY_EXISTS"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client - Duplicate Phone",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+9876543210\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients/{{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"{{clientId}}"
+							]
+						},
+						"description": "Try to update phone to one that's already registered to another client - Expected: 409 PHONE_ALREADY_EXISTS"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for uniqueness constraint violations"
+		},
+		{
+			"name": "Not Found Errors",
+			"item": [
+				{
+					"name": "Get Client by ID - Not Found",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clients/99999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"99999"
+							]
+						},
+						"description": "Try to get client with non-existent ID - Expected: 404 CLIENT_NOT_FOUND"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Client by Email - Not Found",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clients/email/nonexistent@example.com",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"email",
+								"nonexistent@example.com"
+							]
+						},
+						"description": "Try to get client with non-existent email - Expected: 404 CLIENT_NOT_FOUND"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Client - Not Found",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Name\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients/99999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"99999"
+							]
+						},
+						"description": "Try to update client with non-existent ID - Expected: 404 CLIENT_NOT_FOUND"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Client - Not Found",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/clients/99999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients",
+								"99999"
+							]
+						},
+						"description": "Try to delete client with non-existent ID - Expected: 404 CLIENT_NOT_FOUND"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for resource not found scenarios"
+		},
+		{
+			"name": "Authentication Errors",
+			"item": [
+				{
+					"name": "Create Client - Missing API Key",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Test Street\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test without Authorization header - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Invalid API Key",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey wrong-api-key"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Test Street\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with invalid API key - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Client - Wrong Auth Format",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer client-service-api-key-change-in-production"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Test Street\",\n  \"documentType\": \"DNI\",\n  \"documentNumber\": \"12345678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clients",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"clients"
+							]
+						},
+						"description": "Test with wrong authorization format (Bearer instead of ApiKey) - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for API key authentication errors"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "client-service-api-key-change-in-production",
+			"type": "string"
+		},
+		{
+			"key": "clientId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "clientEmail",
+			"value": "john.doe@example.com",
+			"type": "string"
+		}
+	]
+}

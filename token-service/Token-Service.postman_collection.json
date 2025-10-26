@@ -1,0 +1,503 @@
+{
+	"info": {
+		"_postman_id": "token-service-collection",
+		"name": "Token Service API",
+		"description": "Complete Postman collection for testing the Token Service API with credit card tokenization",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health & Info",
+			"item": [
+				{
+					"name": "Ping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/ping",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ping"
+							]
+						},
+						"description": "Simple health check endpoint that returns 'pong'"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tokens/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tokens",
+								"health"
+							]
+						},
+						"description": "Detailed health check including database connectivity status"
+					},
+					"response": []
+				},
+				{
+					"name": "Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/tokens/info",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tokens",
+								"info"
+							]
+						},
+						"description": "Get service information and available endpoints"
+					},
+					"response": []
+				}
+			],
+			"description": "Public endpoints for health checks and service information"
+		},
+		{
+			"name": "Tokenization - Success Cases",
+			"item": [
+				{
+					"name": "Tokenize Visa Card",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4111111111111111\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Tokenize a valid Visa card (4111111111111111)"
+					},
+					"response": []
+				},
+				{
+					"name": "Tokenize Mastercard",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"5425233430109903\",\n  \"cvv\": \"456\",\n  \"expiry\": \"06/29\",\n  \"cardholderName\": \"Jane Smith\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Tokenize a valid Mastercard"
+					},
+					"response": []
+				},
+				{
+					"name": "Tokenize Amex",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"378282246310005\",\n  \"cvv\": \"1234\",\n  \"expiry\": \"03/27\",\n  \"cardholderName\": \"Robert Johnson\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Tokenize a valid American Express card (with 4-digit CVV)"
+					},
+					"response": []
+				},
+				{
+					"name": "Tokenize Card with Spaces",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4532 0151 1283 0366\",\n  \"cvv\": \"789\",\n  \"expiry\": \"09/26\",\n  \"cardholderName\": \"Maria Garcia\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Tokenize a card number with spaces (should be cleaned automatically)"
+					},
+					"response": []
+				}
+			],
+			"description": "Successful tokenization requests with valid card data"
+		},
+		{
+			"name": "Tokenization - Validation Errors",
+			"item": [
+				{
+					"name": "Invalid Card Number - Failed Luhn",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"1234567890123456\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test with invalid card number (fails Luhn validation) - Expected: 400 INVALID_CARD_NUMBER"
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid Card Number - Too Short",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"123456789012\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test with card number too short (less than 13 digits) - Expected: 400 INVALID_CARD_NUMBER"
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid CVV - Wrong Format",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4111111111111111\",\n  \"cvv\": \"12\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test with invalid CVV (too short) - Expected: 400 INVALID_CVV"
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid Expiry - Wrong Format",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4111111111111111\",\n  \"cvv\": \"123\",\n  \"expiry\": \"13/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test with invalid expiry month (13) - Expected: 400 INVALID_EXPIRY"
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid Cardholder Name - Too Short",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4111111111111111\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"J\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test with cardholder name too short - Expected: 400 INVALID_CARDHOLDER_NAME"
+					},
+					"response": []
+				},
+				{
+					"name": "Empty Card Number",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey {{apiKey}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test with empty card number - Expected: 400 INVALID_CARD_NUMBER"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for various validation error scenarios"
+		},
+		{
+			"name": "Authentication Errors",
+			"item": [
+				{
+					"name": "Missing API Key",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4111111111111111\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test without Authorization header - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid API Key",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "ApiKey wrong-api-key"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4111111111111111\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test with invalid API key - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				},
+				{
+					"name": "Wrong Auth Header Format",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer your-secret-api-key-change-in-production"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cardNumber\": \"4111111111111111\",\n  \"cvv\": \"123\",\n  \"expiry\": \"12/28\",\n  \"cardholderName\": \"John Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tokenize",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tokenize"
+							]
+						},
+						"description": "Test with wrong authorization format (Bearer instead of ApiKey) - Expected: 401 UNAUTHORIZED"
+					},
+					"response": []
+				}
+			],
+			"description": "Tests for API key authentication errors"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8082",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "your-secret-api-key-change-in-production",
+			"type": "string"
+		}
+	]
+}
