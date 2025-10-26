@@ -1,0 +1,59 @@
+# Order Service - Development Configuration
+spring:
+  application:
+    name: order-service
+
+  datasource:
+    url: jdbc:postgresql://order-db:5432/orderdb
+    username: orderuser
+    password: orderpass
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+server:
+  port: 8085
+
+# API Key for authentication
+api:
+  key: order-service-api-key-change-in-production
+
+# Payment configuration
+payment:
+  rejectionProbability: 0.3
+  retryCount: 3
+
+# Service URLs for inter-service communication (Docker internal network)
+services:
+  client:
+    url: http://client-service:8081
+    apiKey: client-service-api-key-change-in-production
+  token:
+    url: http://token-service:8082
+    apiKey: your-secret-api-key-change-in-production
+  product:
+    url: http://product-service:8083
+    apiKey: product-service-api-key-change-in-production
+  cart-service:
+    url: http://cart-service:8084
+    api-key: cart-service-api-key-change-in-production
+
+# Email configuration (mock for now)
+email:
+  enabled: false
+  from: noreply@farmatodo.com
+
+# Logging configuration
+logging:
+  level:
+    com.farmatodo.order_service: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{transactionId}] %-5level %logger{36} - %msg%n"

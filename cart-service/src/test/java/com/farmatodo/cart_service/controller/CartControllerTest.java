@@ -53,8 +53,8 @@ class CartControllerTest {
                 .userId(1L)
                 .status("ACTIVE")
                 .items(Collections.emptyList())
-                .subtotal(BigDecimal.ZERO)
-                .total(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.ZERO)
+                .itemCount(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -83,16 +83,14 @@ class CartControllerTest {
                 .userId(1L)
                 .status("ACTIVE")
                 .items(Arrays.asList(item1, item2))
-                .subtotal(new BigDecimal("24.97"))
-                .total(new BigDecimal("24.97"))
+                .totalAmount(new BigDecimal("24.97"))
+                .itemCount(2)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         addItemRequest = AddItemRequestDTO.builder()
                 .productId(101L)
-                .productName("Aspirin 500mg")
-                .unitPrice(new BigDecimal("5.99"))
                 .quantity(2)
                 .build();
 
@@ -147,7 +145,7 @@ class CartControllerTest {
                 .andExpect(jsonPath("$.userId").value(1))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.items.length()").value(2))
-                .andExpect(jsonPath("$.total").value(24.97));
+                .andExpect(jsonPath("$.totalAmount").value(24.97));
 
         verify(cartService, times(1)).getOrCreateCart(1L);
     }
@@ -163,7 +161,7 @@ class CartControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(1))
                 .andExpect(jsonPath("$.items").isEmpty())
-                .andExpect(jsonPath("$.total").value(0));
+                .andExpect(jsonPath("$.totalAmount").value(0));
 
         verify(cartService, times(1)).getOrCreateCart(2L);
     }
@@ -193,7 +191,7 @@ class CartControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.userId").value(1))
                 .andExpect(jsonPath("$.items.length()").value(2))
-                .andExpect(jsonPath("$.total").value(24.97));
+                .andExpect(jsonPath("$.totalAmount").value(24.97));
 
         verify(cartService, times(1)).addItemToCart(eq(1L), any(AddItemRequestDTO.class));
     }
@@ -215,8 +213,8 @@ class CartControllerTest {
                 .userId(1L)
                 .status("ACTIVE")
                 .items(Arrays.asList(updatedItem))
-                .subtotal(new BigDecimal("23.96"))
-                .total(new BigDecimal("23.96"))
+                .totalAmount(new BigDecimal("23.96"))
+                .itemCount(1)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -230,7 +228,7 @@ class CartControllerTest {
                         .content(objectMapper.writeValueAsString(addItemRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.items[0].quantity").value(4))
-                .andExpect(jsonPath("$.total").value(23.96));
+                .andExpect(jsonPath("$.totalAmount").value(23.96));
     }
 
     @Test
@@ -297,8 +295,8 @@ class CartControllerTest {
                 .userId(1L)
                 .status("ACTIVE")
                 .items(Arrays.asList(remainingItem))
-                .subtotal(new BigDecimal("12.99"))
-                .total(new BigDecimal("12.99"))
+                .totalAmount(new BigDecimal("12.99"))
+                .itemCount(1)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -310,7 +308,7 @@ class CartControllerTest {
                         .header("Authorization", "ApiKey cart-service-api-key-change-in-production"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
-                .andExpect(jsonPath("$.total").value(12.99));
+                .andExpect(jsonPath("$.totalAmount").value(12.99));
 
         verify(cartService, times(1)).removeItemFromCart(1L, 101L);
     }
@@ -366,8 +364,8 @@ class CartControllerTest {
                 .userId(1L)
                 .status("COMPLETED")
                 .items(cartWithItems.getItems())
-                .subtotal(new BigDecimal("24.97"))
-                .total(new BigDecimal("24.97"))
+                .totalAmount(new BigDecimal("24.97"))
+                .itemCount(2)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -379,7 +377,7 @@ class CartControllerTest {
                         .header("Authorization", "ApiKey cart-service-api-key-change-in-production"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.total").value(24.97));
+                .andExpect(jsonPath("$.totalAmount").value(24.97));
 
         verify(cartService, times(1)).checkoutCart(1L);
     }

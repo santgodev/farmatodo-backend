@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk 'java17016'
+        maven 'maven399'
+    }
+
+    environment {
+        SERVICE_NAME = 'client-server'
+        PROJECT_NAME = 'farmatodo'
+    }
+
+    options {
+        timestamps()
+        timeout(time: 20, unit: 'MINUTES')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                dir("${env.SERVICE_NAME}") {
+                    script {
+                        echo "🏗️ Building ${env.SERVICE_NAME}..."
+                        sh "mvn clean package -DskipTests=false"
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir("${env.SERVICE_NAME}") {
+                    script {
+                        echo "🐳 Building Docker image..."
+                        def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}:latest"
+                        sh "docker build -t ${imageName} ."
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                echo "=========================================="
+                echo "Service: ${env.SERVICE_NAME}"
+                echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
+                echo "Duration: ${currentBuild.durationString}"
+                echo "=========================================="
+            }
+            junit allowEmptyResults: true, testResults: "${env.SERVICE_NAME}/target/surefire-reports/*.xml"
+            archiveArtifacts artifacts: "${env.SERVICE_NAME}/target/*.jar", allowEmptyArchive: true, fingerprint: true
+        }
+
+        success {
+            echo "✅ Build succeeded!"
+        }
+
+        failure {
+            echo "❌ Build failed!"
+        }
+    }
+}

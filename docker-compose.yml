@@ -318,14 +318,14 @@ services:
       SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
       SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
       SPRING_CLOUD_CONFIG_URI: http://config-server:8888
-      SERVER_PORT: 8080
+      SERVER_PORT: 9090
       CLIENT_SERVICE_URL: http://client-service:8081
       TOKEN_SERVICE_URL: http://token-service:8082
       PRODUCT_SERVICE_URL: http://product-service:8083
       CART_SERVICE_URL: http://cart-service:8084
       ORDER_SERVICE_URL: http://order-service:8085
     ports:
-      - "8080:8080"
+      - "9090:9090"
     depends_on:
       config-server:
         condition: service_healthy

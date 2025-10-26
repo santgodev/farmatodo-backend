@@ -2,6 +2,7 @@ package com.farmatodo.order_service.controller;
 
 import com.farmatodo.order_service.dto.CreateOrderRequestDTO;
 import com.farmatodo.order_service.dto.OrderItemDTO;
+import com.farmatodo.order_service.dto.OrderItemResponseDTO;
 import com.farmatodo.order_service.dto.OrderResponseDTO;
 import com.farmatodo.order_service.exception.BusinessException;
 import com.farmatodo.order_service.service.OrderService;
@@ -50,8 +51,7 @@ class OrderControllerTest {
                 .token("test-token-uuid")
                 .build();
 
-        OrderItemDTO item1 = OrderItemDTO.builder()
-                .id(1L)
+        OrderItemResponseDTO item1 = OrderItemResponseDTO.builder()
                 .productId(101L)
                 .productName("Aspirin 500mg")
                 .unitPrice(new BigDecimal("5.99"))
@@ -59,8 +59,7 @@ class OrderControllerTest {
                 .subtotal(new BigDecimal("11.98"))
                 .build();
 
-        OrderItemDTO item2 = OrderItemDTO.builder()
-                .id(2L)
+        OrderItemResponseDTO item2 = OrderItemResponseDTO.builder()
                 .productId(102L)
                 .productName("Vitamin C")
                 .unitPrice(new BigDecimal("12.99"))
@@ -69,12 +68,10 @@ class OrderControllerTest {
                 .build();
 
         orderResponse = OrderResponseDTO.builder()
-                .id(1L)
+                .orderId(1L)
                 .clientId(1L)
                 .token("test-token-uuid")
                 .status("APPROVED")
-                .paymentStatus("APPROVED")
-                .paymentMessage("Payment approved")
                 .paymentAttempts(1)
                 .totalAmount(new BigDecimal("24.97"))
                 .items(Arrays.asList(item1, item2))
@@ -106,12 +103,10 @@ class OrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validOrderRequest)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.orderId").value(1))
                 .andExpect(jsonPath("$.clientId").value(1))
                 .andExpect(jsonPath("$.token").value("test-token-uuid"))
                 .andExpect(jsonPath("$.status").value("APPROVED"))
-                .andExpect(jsonPath("$.paymentStatus").value("APPROVED"))
-                .andExpect(jsonPath("$.paymentMessage").value("Payment approved"))
                 .andExpect(jsonPath("$.paymentAttempts").value(1))
                 .andExpect(jsonPath("$.totalAmount").value(24.97))
                 .andExpect(jsonPath("$.items.length()").value(2))
@@ -125,12 +120,10 @@ class OrderControllerTest {
     void testCreateOrder_PaymentApprovedOnSecondAttempt_ShouldReturnOrder() throws Exception {
         // Arrange
         OrderResponseDTO retriedOrder = OrderResponseDTO.builder()
-                .id(1L)
+                .orderId(1L)
                 .clientId(1L)
                 .token("test-token-uuid")
                 .status("APPROVED")
-                .paymentStatus("APPROVED")
-                .paymentMessage("Payment approved")
                 .paymentAttempts(2)  // Approved on 2nd attempt
                 .totalAmount(new BigDecimal("24.97"))
                 .items(orderResponse.getItems())
@@ -157,12 +150,11 @@ class OrderControllerTest {
     void testCreateOrder_PaymentRejected_ShouldReturnRejectedOrder() throws Exception {
         // Arrange
         OrderResponseDTO rejectedOrder = OrderResponseDTO.builder()
-                .id(1L)
+                .orderId(1L)
                 .clientId(1L)
                 .token("test-token-uuid")
                 .status("REJECTED")
-                .paymentStatus("REJECTED")
-                .paymentMessage("Payment rejected on attempt 3")
+                .rejectionReason("Payment rejected on attempt 3")
                 .paymentAttempts(3)  // All attempts failed
                 .totalAmount(new BigDecimal("24.97"))
                 .items(orderResponse.getItems())
@@ -180,7 +172,7 @@ class OrderControllerTest {
                         .content(objectMapper.writeValueAsString(validOrderRequest)))
                 .andExpect(status().isCreated())  // Order is created even if payment fails
                 .andExpect(jsonPath("$.status").value("REJECTED"))
-                .andExpect(jsonPath("$.paymentStatus").value("REJECTED"))
+                .andExpect(jsonPath("$.rejectionReason").value("Payment rejected on attempt 3"))
                 .andExpect(jsonPath("$.paymentAttempts").value(3));
     }
 
@@ -301,7 +293,7 @@ class OrderControllerTest {
         mockMvc.perform(get("/orders/1")
                         .header("Authorization", "ApiKey test-api-key-12345"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.orderId").value(1))
                 .andExpect(jsonPath("$.clientId").value(1))
                 .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.totalAmount").value(24.97));
@@ -330,12 +322,11 @@ class OrderControllerTest {
     void testGetOrder_PendingOrder_ShouldReturnPendingStatus() throws Exception {
         // Arrange
         OrderResponseDTO pendingOrder = OrderResponseDTO.builder()
-                .id(1L)
+                .orderId(1L)
                 .clientId(1L)
                 .token("test-token-uuid")
                 .status("PENDING")
-                .paymentStatus(null)
-                .paymentMessage(null)
+                .rejectionReason(null)
                 .paymentAttempts(0)
                 .totalAmount(new BigDecimal("24.97"))
                 .items(orderResponse.getItems())

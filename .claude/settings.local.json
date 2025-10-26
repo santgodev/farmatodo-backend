@@ -17,7 +17,20 @@
       "Bash(timeout 20 bash -c 'until curl -s http://localhost:8084/carts/health > /dev/null 2>&1; do sleep 1; done && echo \"\"Cart service is ready!\"\"')",
       "Bash(python:*)",
       "Bash(docker-compose down:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dir:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Directory | Select-Object Name\")",
+      "Bash(powershell -Command \"Get-ChildItem config-server -Recurse | Select-Object FullName\")",
+      "Bash(powershell -Command \"Get-ChildItem config-service | Select-Object Name\")",
+      "Bash(powershell -Command \"Get-ChildItem config-server\\src\\main\\resources\")",
+      "Bash(powershell -Command \"Get-ChildItem -File | Where-Object {$_Extension -in ''.sh'', ''.bat'', ''.cmd''}\")",
+      "Bash(powershell:*)",
+      "Bash(del config-serviceJenkinsfile.template)",
+      "Bash(taskkill //F //PID 15784)",
+      "Bash(taskkill //F //PID 5164)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []

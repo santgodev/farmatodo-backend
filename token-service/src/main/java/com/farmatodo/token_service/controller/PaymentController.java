@@ -40,4 +40,3 @@ public class PaymentController {
         return "pong";
     }
 }
-}

@@ -341,7 +341,7 @@ class ProductServiceTest {
         ProductSearchResponseDTO response = productService.searchProducts(query, userIdentifier);
 
         // Assert - Verify the event was published
-        verify(searchEventPublisher, times(1)).publishEvent(eventCaptor.capture());
+        verify(searchEventPublisher, times(1)).publishSearchEvent(eventCaptor.capture());
 
         SearchEvent capturedEvent = eventCaptor.getValue();
         assertThat(capturedEvent).isNotNull();
@@ -369,7 +369,7 @@ class ProductServiceTest {
 
         // Simulate async logging failure
         doThrow(new RuntimeException("Async logging failed"))
-                .when(searchEventPublisher).publishEvent(any(SearchEvent.class));
+                .when(searchEventPublisher).publishSearchEvent(any(SearchEvent.class));
 
         // Act & Assert - Should not throw exception
         ProductSearchResponseDTO response = productService.searchProducts(query, userIdentifier);
@@ -379,7 +379,7 @@ class ProductServiceTest {
         assertThat(response.getTotalResults()).isEqualTo(1);
 
         // Verify publish was attempted
-        verify(searchEventPublisher).publishEvent(any(SearchEvent.class));
+        verify(searchEventPublisher).publishSearchEvent(any(SearchEvent.class));
     }
 
     @Test
@@ -401,7 +401,7 @@ class ProductServiceTest {
         productService.searchProducts(query, userIdentifier);
 
         // Assert
-        verify(searchEventPublisher).publishEvent(eventCaptor.capture());
+        verify(searchEventPublisher).publishSearchEvent(eventCaptor.capture());
 
         SearchEvent event = eventCaptor.getValue();
         assertThat(event.getSearchTerm()).isEqualTo(query);
@@ -429,7 +429,7 @@ class ProductServiceTest {
         assertThat(response.getTotalResults()).isEqualTo(0);
 
         // Verify event was published even for zero results
-        verify(searchEventPublisher).publishEvent(eventCaptor.capture());
+        verify(searchEventPublisher).publishSearchEvent(eventCaptor.capture());
 
         SearchEvent event = eventCaptor.getValue();
         assertThat(event.getSearchTerm()).isEqualTo(query);
@@ -457,7 +457,7 @@ class ProductServiceTest {
         assertThat(response.getProducts()).hasSize(2);
 
         verify(productRepository).searchProducts(emptyQuery, 10);
-        verify(searchEventPublisher).publishEvent(any(SearchEvent.class));
+        verify(searchEventPublisher).publishSearchEvent(any(SearchEvent.class));
     }
 
     @Test
