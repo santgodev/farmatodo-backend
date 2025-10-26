@@ -228,24 +228,22 @@ pipeline {
             }
         }
 
-        stage('Push to Registry') {
-            when {
-                expression { params.PUSH_TO_REGISTRY == true }
-            }
-            steps {
-                script {
-                    echo "Pushing Docker image to registry..."
-
-                    docker.withRegistry("https://${env.DOCKER_REGISTRY}", env.DOCKER_CREDENTIALS) {
-                        def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}"
-                        sh "docker push ${imageName}:${env.DOCKER_IMAGE_TAG}"
-                        sh "docker push ${imageName}:${env.DEPLOY_ENV}-latest"
-                    }
-
-                    echo "✓ Image pushed successfully"
-                }
-            }
-        }
+// stage('Push to Registry') {
+//     when {
+//         expression { params.PUSH_TO_REGISTRY == true }
+//     }
+//     steps {
+//         script {
+//             echo "Pushing Docker image to registry..."
+//             docker.withRegistry("https://${env.DOCKER_REGISTRY}", env.DOCKER_CREDENTIALS) {
+//                 def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}"
+//                 sh "docker push ${imageName}:${env.DOCKER_IMAGE_TAG}"
+//                 sh "docker push ${imageName}:${env.DEPLOY_ENV}-latest"
+//             }
+//             echo "✓ Image pushed successfully"
+//         }
+//     }
+// }
 
         stage('Deploy') {
             when {
