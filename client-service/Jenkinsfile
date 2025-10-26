@@ -1,354 +1,96 @@
-// ============================================================================
-// Jenkinsfile for Client Service
-// ============================================================================
-// This is a customized pipeline for the client-service microservice
-// Based on: config-service/Jenkinsfile.template
-// ============================================================================
-
 pipeline {
     agent any
 
-    // ========================================================================
-    // CLIENT SERVICE CONFIGURATION
-    // ========================================================================
+    tools {
+        jdk 'java17016'
+        maven 'maven399'
+    }
+
     environment {
-        // Service identification
         SERVICE_NAME = 'client-service'
-        SERVICE_PORT = '8081'
-
-        // Docker configuration
-        DOCKER_REGISTRY = credentials('docker-registry-url')
-        DOCKER_CREDENTIALS = credentials('docker-hub-credentials')
-
-        // Project configuration
         PROJECT_NAME = 'farmatodo'
-        BRANCH_NAME = "${env.GIT_BRANCH?.replaceAll('origin/', '') ?: 'master'}"
-        DEPLOY_ENV = "${BRANCH_NAME == 'master' ? 'prod' : (BRANCH_NAME == 'staging' ? 'staging' : 'dev')}"
-
-        // Build configuration
-        MAVEN_OPTS = '-Xmx1024m -Xms512m'
-        JAVA_HOME = tool name: 'JDK17', type: 'jdk'
-
-        // Database configuration for integration tests
-        DB_HOST = 'localhost'
-        DB_PORT = '5432'
-        DB_NAME = 'clientdb_test'
-        DB_USERNAME = 'postgres'
+        DB_CONTAINER = 'test-postgres'
+        DB_PORT = '5440'           
+        DB_NAME = 'testdb'
+        DB_USER = 'postgres'
         DB_PASSWORD = 'postgres'
     }
 
-    parameters {
-        booleanParam(
-            name: 'RUN_TESTS',
-            defaultValue: true,
-            description: 'Run unit tests'
-        )
-
-        booleanParam(
-            name: 'RUN_INTEGRATION_TESTS',
-            defaultValue: false,
-            description: 'Run integration tests (requires PostgreSQL)'
-        )
-
-        booleanParam(
-            name: 'BUILD_DOCKER_IMAGE',
-            defaultValue: true,
-            description: 'Build Docker image'
-        )
-
-        booleanParam(
-            name: 'PUSH_TO_REGISTRY',
-            defaultValue: false,
-            description: 'Push Docker image to registry'
-        )
-
-        booleanParam(
-            name: 'DEPLOY_SERVICE',
-            defaultValue: false,
-            description: 'Deploy this service'
-        )
-
-        choice(
-            name: 'LOG_LEVEL',
-            choices: ['INFO', 'DEBUG', 'WARN'],
-            description: 'Maven build log level'
-        )
-    }
-
     options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 30, unit: 'MINUTES')
         timestamps()
-        ansiColor('xterm')
+        timeout(time: 20, unit: 'MINUTES')
     }
 
     stages {
-        stage('Initialize') {
-            steps {
-                script {
-                    echo "=========================================="
-                    echo "Client Service - CI/CD Pipeline"
-                    echo "=========================================="
-                    echo "Service: ${env.SERVICE_NAME}"
-                    echo "Port: ${env.SERVICE_PORT}"
-                    echo "Branch: ${env.BRANCH_NAME}"
-                    echo "Environment: ${env.DEPLOY_ENV}"
-                    echo "Build: #${env.BUILD_NUMBER}"
-                    echo "=========================================="
-                }
-            }
-        }
-
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Start Test Database') {
+            steps {
                 script {
-                    env.GIT_COMMIT_SHORT = sh(
-                        script: "git rev-parse --short HEAD",
-                        returnStdout: true
-                    ).trim()
+                    echo "🐘 Starting temporary PostgreSQL container for tests..."
 
-                    env.GIT_COMMIT_MSG = sh(
-                        script: "git log -1 --pretty=%B",
-                        returnStdout: true
-                    ).trim()
+                    // Stop any previous DB container if still running
+                    sh '''
+                        docker rm -f ${DB_CONTAINER} || true
+                    '''
 
-                    echo "Commit: ${env.GIT_COMMIT_SHORT}"
-                    echo "Message: ${env.GIT_COMMIT_MSG}"
+                    // Start a clean PostgreSQL instance
+                    sh '''
+                        docker run -d --name ${DB_CONTAINER} \
+                            -e POSTGRES_DB=${DB_NAME} \
+                            -e POSTGRES_USER=${DB_USER} \
+                            -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+                            -p ${DB_PORT}:5432 postgres:15
+                    '''
+
+                    // Wait for DB to be ready
+                    echo "⏳ Waiting for PostgreSQL to initialize..."
+                    sh '''
+                        for i in {1..10}; do
+                            if docker exec ${DB_CONTAINER} pg_isready -U ${DB_USER} > /dev/null 2>&1; then
+                                echo "✅ PostgreSQL is ready!"
+                                break
+                            fi
+                            echo "Waiting..."
+                            sleep 3
+                        done
+                    '''
                 }
             }
         }
 
-        stage('Build') {
+        stage('Build & Test') {
             steps {
-                dir('client-service') {
+                dir("${env.SERVICE_NAME}") {
                     script {
-                        echo "Building client-service..."
+                        echo "🏗️ Building ${env.SERVICE_NAME}..."
 
-                        def mavenGoals = 'clean package'
-                        if (!params.RUN_TESTS) {
-                            mavenGoals += ' -DskipTests'
-                        }
-
-                        if (isUnix()) {
-                            sh "./mvnw ${mavenGoals} -B -${params.LOG_LEVEL}"
-                        } else {
-                            bat "mvnw.cmd ${mavenGoals} -B -${params.LOG_LEVEL}"
-                        }
-
-                        echo "✓ Client service built successfully"
-                    }
-                }
-            }
-        }
-
-        stage('Unit Tests') {
-            when {
-                expression { params.RUN_TESTS == true }
-            }
-            steps {
-                dir('client-service') {
-                    script {
-                        echo "Running unit tests..."
-
-                        if (isUnix()) {
-                            sh "./mvnw test -B"
-                        } else {
-                            bat "mvnw.cmd test -B"
-                        }
-
-                        echo "✓ Unit tests passed"
-                    }
-                }
-            }
-        }
-
-        stage('Integration Tests') {
-            when {
-                expression { params.RUN_INTEGRATION_TESTS == true }
-            }
-            steps {
-                dir('client-service') {
-                    script {
-                        echo "Starting test database..."
-
-                        // Start PostgreSQL for testing
+                        def dbUrl = "jdbc:postgresql://localhost:${env.DB_PORT}/${env.DB_NAME}"
                         sh """
-                            docker run -d --name client-db-test \
-                                -e POSTGRES_DB=${env.DB_NAME} \
-                                -e POSTGRES_USER=${env.DB_USERNAME} \
-                                -e POSTGRES_PASSWORD=${env.DB_PASSWORD} \
-                                -p 5432:5432 \
-                                postgres:16-alpine
+                            mvn clean package \
+                                -Dspring.datasource.url=${dbUrl} \
+                                -Dspring.datasource.username=${env.DB_USER} \
+                                -Dspring.datasource.password=${env.DB_PASSWORD} \
+                                -Dspring.jpa.hibernate.ddl-auto=create-drop \
+                                -B
                         """
-
-                        // Wait for database to be ready
-                        sh """
-                            timeout 30 bash -c 'until docker exec client-db-test pg_isready; do sleep 1; done'
-                        """
-
-                        echo "Running integration tests..."
-
-                        try {
-                            if (isUnix()) {
-                                sh "./mvnw verify -P integration-tests -B"
-                            } else {
-                                bat "mvnw.cmd verify -P integration-tests -B"
-                            }
-
-                            echo "✓ Integration tests passed"
-                        } finally {
-                            // Always stop and remove test database
-                            echo "Cleaning up test database..."
-                            sh """
-                                docker stop client-db-test || true
-                                docker rm client-db-test || true
-                            """
-                        }
                     }
                 }
             }
         }
 
-        stage('Build Docker Image') {
-            when {
-                expression { params.BUILD_DOCKER_IMAGE == true }
-            }
+        stage('Docker Build') {
             steps {
-                dir('client-service') {
+                dir("${env.SERVICE_NAME}") {
                     script {
-                        echo "Building Docker image for client-service..."
-
-                        def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}"
-                        def imageTag = "${env.DEPLOY_ENV}-${env.GIT_COMMIT_SHORT}"
-                        def latestTag = "${env.DEPLOY_ENV}-latest"
-
-                        sh """
-                            docker build \
-                                --build-arg BUILD_DATE=\$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-                                --build-arg VCS_REF=${env.GIT_COMMIT_SHORT} \
-                                --build-arg VERSION=${env.BUILD_NUMBER} \
-                                -t ${imageName}:${imageTag} \
-                                -t ${imageName}:${latestTag} \
-                                .
-                        """
-
-                        env.DOCKER_IMAGE_TAG = imageTag
-                        echo "✓ Docker image built: ${imageName}:${imageTag}"
-
-                        // Verify image was created
-                        sh "docker images ${imageName}:${imageTag}"
+                        echo "🐳 Building Docker image..."
+                        def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}:latest"
+                        sh "docker build -t ${imageName} ."
                     }
-                }
-            }
-        }
-
-        stage('Push to Registry') {
-            when {
-                expression { params.PUSH_TO_REGISTRY == true }
-            }
-            steps {
-                script {
-                    echo "Pushing Docker image to registry..."
-
-                    docker.withRegistry("https://${env.DOCKER_REGISTRY}", env.DOCKER_CREDENTIALS) {
-                        def imageName = "${env.PROJECT_NAME}/${env.SERVICE_NAME}"
-
-                        sh "docker push ${imageName}:${env.DOCKER_IMAGE_TAG}"
-                        sh "docker push ${imageName}:${env.DEPLOY_ENV}-latest"
-
-                        echo "✓ Image pushed to registry"
-                        echo "  - ${imageName}:${env.DOCKER_IMAGE_TAG}"
-                        echo "  - ${imageName}:${env.DEPLOY_ENV}-latest"
-                    }
-                }
-            }
-        }
-
-        stage('Deploy') {
-            when {
-                expression { params.DEPLOY_SERVICE == true }
-            }
-            steps {
-                script {
-                    echo "Deploying client-service to ${env.DEPLOY_ENV}..."
-
-                    // Stop existing container
-                    sh """
-                        docker stop client-service || true
-                        docker rm client-service || true
-                    """
-
-                    // Deploy with docker-compose (recommended)
-                    sh """
-                        cd ..
-                        docker-compose up -d client-service
-                    """
-
-                    echo "Waiting for service to start..."
-                    sleep(15)
-
-                    echo "✓ Service deployed successfully"
-                }
-            }
-        }
-
-        stage('Health Check') {
-            when {
-                expression { params.DEPLOY_SERVICE == true }
-            }
-            steps {
-                script {
-                    echo "Performing health check on client-service..."
-
-                    def maxRetries = 10
-                    def healthy = false
-
-                    for (int i = 0; i < maxRetries; i++) {
-                        try {
-                            sh """
-                                curl -f http://localhost:${env.SERVICE_PORT}/api/clients/health
-                            """
-                            healthy = true
-                            echo "✓ Client service is healthy"
-                            break
-                        } catch (Exception e) {
-                            echo "⚠ Health check attempt ${i + 1}/${maxRetries} failed"
-                            if (i < maxRetries - 1) {
-                                sleep(5)
-                            }
-                        }
-                    }
-
-                    if (!healthy) {
-                        error("✗ Client service failed health check after ${maxRetries} attempts")
-                    }
-                }
-            }
-        }
-
-        stage('Smoke Tests') {
-            when {
-                expression { params.DEPLOY_SERVICE == true }
-            }
-            steps {
-                script {
-                    echo "Running smoke tests for client-service..."
-
-                    // Test health endpoint
-                    sh """
-                        curl -f http://localhost:${env.SERVICE_PORT}/api/clients/health
-                    """
-
-                    // Test info endpoint
-                    sh """
-                        curl -f http://localhost:${env.SERVICE_PORT}/api/clients/info
-                    """
-
-                    // Additional client-service specific tests can be added here
-                    // Example: Test client creation, retrieval, etc.
-
-                    echo "✓ All smoke tests passed"
                 }
             }
         }
@@ -356,63 +98,27 @@ pipeline {
 
     post {
         always {
-            dir('client-service') {
-                script {
-                    echo "=========================================="
-                    echo "Build Summary - Client Service"
-                    echo "=========================================="
-                    echo "Service: ${env.SERVICE_NAME}"
-                    echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
-                    echo "Duration: ${currentBuild.durationString}"
-                    echo "Commit: ${env.GIT_COMMIT_SHORT}"
-                    echo "Image Tag: ${env.DOCKER_IMAGE_TAG ?: 'N/A'}"
-                    echo "=========================================="
-                }
-
-                // Publish test results
-                junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-
-                // Archive JAR file
-                archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true, fingerprint: true
-
-                // Publish test coverage (if Jacoco is configured)
-                // jacoco execPattern: 'target/jacoco.exec'
-            }
-
-            // Clean up Docker resources
             script {
-                sh 'docker system prune -f || true'
+                echo "🧹 Cleaning up test environment..."
+                sh "docker rm -f ${DB_CONTAINER} || true"
+
+                echo "=========================================="
+                echo "Service: ${env.SERVICE_NAME}"
+                echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
+                echo "Duration: ${currentBuild.durationString}"
+                echo "=========================================="
             }
+
+            junit allowEmptyResults: true, testResults: "${env.SERVICE_NAME}/target/surefire-reports/*.xml"
+            archiveArtifacts artifacts: "${env.SERVICE_NAME}/target/*.jar", allowEmptyArchive: true, fingerprint: true
         }
 
         success {
-            script {
-                echo "✓ Client service build succeeded!"
-
-                // Send success notification (uncomment and configure)
-                // slackSend (
-                //     color: 'good',
-                //     message: "✓ SUCCESS: client-service build #${env.BUILD_NUMBER}\nCommit: ${env.GIT_COMMIT_SHORT}\n${env.BUILD_URL}"
-                // )
-            }
+            echo "✅ Build and tests succeeded!"
         }
 
         failure {
-            script {
-                echo "✗ Client service build failed!"
-
-                // Send failure notification (uncomment and configure)
-                // slackSend (
-                //     color: 'danger',
-                //     message: "✗ FAILURE: client-service build #${env.BUILD_NUMBER}\nCommit: ${env.GIT_COMMIT_SHORT}\n${env.BUILD_URL}"
-                // )
-            }
-        }
-
-        unstable {
-            script {
-                echo "⚠ Client service build is unstable!"
-            }
+            echo "❌ Build or tests failed!"
         }
     }
 }
