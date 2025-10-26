@@ -8,6 +8,10 @@
 
 pipeline {
     agent any
+    tools {
+        jdk 'java17016'
+        maven 'maven399'
+    }
 
     // ========================================================================
     // CONFIGURATION - Update these variables for each service
