@@ -9,6 +9,11 @@ pipeline {
     environment {
         SERVICE_NAME = 'client-service'
         PROJECT_NAME = 'farmatodo'
+        DB_CONTAINER = 'test-postgres'
+        DB_PORT = '5433'
+        DB_NAME = 'testdb'
+        DB_USER = 'postgres'
+        DB_PASSWORD = 'postgres'
     }
 
     options {
@@ -23,12 +28,57 @@ pipeline {
             }
         }
 
+        stage('Start Test Database') {
+            steps {
+                script {
+                    echo "🐘 Starting temporary PostgreSQL container for tests..."
+
+                    // Stop any previous DB container if still running
+                    sh '''
+                        docker rm -f ${DB_CONTAINER} || true
+                    '''
+
+                    // Run a fresh PostgreSQL instance
+                    sh '''
+                        docker run -d --name ${DB_CONTAINER} \
+                            -e POSTGRES_DB=${DB_NAME} \
+                            -e POSTGRES_USER=${DB_USER} \
+                            -e POSTGRES_PASSWORD=${DB_PASSWORD} \
+                            -p ${DB_PORT}:5432 postgres:15
+                    '''
+
+                    // Wait for PostgreSQL to initialize
+                    echo "⏳ Waiting for PostgreSQL to be ready..."
+                    sh '''
+                        for i in {1..10}; do
+                            if docker exec ${DB_CONTAINER} pg_isready -U ${DB_USER} > /dev/null 2>&1; then
+                                echo "✅ PostgreSQL is ready!"
+                                break
+                            fi
+                            echo "Waiting..."
+                            sleep 3
+                        done
+                    '''
+                }
+            }
+        }
+
         stage('Build & Test') {
             steps {
                 dir("${env.SERVICE_NAME}") {
                     script {
                         echo "🏗️ Building ${env.SERVICE_NAME}..."
-                        sh "mvn clean package -DskipTests=false"
+
+                        // Set dynamic DB URL for tests
+                        def dbUrl = "jdbc:postgresql://localhost:${env.DB_PORT}/${env.DB_NAME}"
+                        sh """
+                            mvn clean package \
+                                -Dspring.datasource.url=${dbUrl} \
+                                -Dspring.datasource.username=${env.DB_USER} \
+                                -Dspring.datasource.password=${env.DB_PASSWORD} \
+                                -Dspring.jpa.hibernate.ddl-auto=create-drop \
+                                -B
+                        """
                     }
                 }
             }
@@ -50,22 +100,26 @@ pipeline {
     post {
         always {
             script {
+                echo "🧹 Cleaning up test environment..."
+                sh "docker rm -f ${DB_CONTAINER} || true"
+
                 echo "=========================================="
                 echo "Service: ${env.SERVICE_NAME}"
                 echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
                 echo "Duration: ${currentBuild.durationString}"
                 echo "=========================================="
             }
+
             junit allowEmptyResults: true, testResults: "${env.SERVICE_NAME}/target/surefire-reports/*.xml"
             archiveArtifacts artifacts: "${env.SERVICE_NAME}/target/*.jar", allowEmptyArchive: true, fingerprint: true
         }
 
         success {
-            echo "✅ Build succeeded!"
+            echo "✅ Build and tests succeeded!"
         }
 
         failure {
-            echo "❌ Build failed!"
+            echo "❌ Build or tests failed!"
         }
     }
 }
