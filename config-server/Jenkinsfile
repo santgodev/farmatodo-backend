@@ -7,36 +7,16 @@ pipeline {
   }
 
   environment {
-    // ===== Servicio / Imagen local =====
     SERVICE      = 'config-server'
     IMAGE_BASE   = "farmatodo/${SERVICE}"
     IMAGE_TAG    = "${BUILD_NUMBER}"
     IMAGE        = "${IMAGE_BASE}:${IMAGE_TAG}"
 
-    // ===== Red local =====
-    PORT         = '8888'     // puerto interno del contenedor
-    HOST         = '8889'     // puerto expuesto en el host
+    PORT         = '8888'     // Puerto interno del contenedor
+    HOST         = '8889'     // Puerto expuesto localmente
     NET          = 'farmatodo-network'
 
-    // ===== SonarQube =====
     SONAR_SCANNER_HOME = tool 'sonar7'
-
-    // ===== GCP / Artifact Registry / Cloud Run =====
-    GCP_PROJECT_ID = 'planar-momentum-469121-n0'
-    REGION         = 'us-central1'
-    REPOSITORY     = "${SERVICE}-repo"
-    AR_HOST        = "${REGION}-docker.pkg.dev"
-    FULL_IMAGE_NAME = "${AR_HOST}/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
-
-    CR_SERVICE     = "${SERVICE}"
-    CR_PLATFORM    = "managed"
-    CR_CPU         = "1"
-    CR_MEMORY      = "512Mi"
-    CR_CONCURRENCY = "80"
-    CR_MIN_INST    = "0"
-    CR_MAX_INST    = "2"
-    CR_PORT        = "${PORT}"
-    CR_ALLOW_UNAUTH = "true"
   }
 
   options {
@@ -46,7 +26,7 @@ pipeline {
 
   stages {
 
-    // 1) Checkout & Build
+    // 1️⃣ Checkout & Build (con tests)
     stage('Checkout & Build') {
       steps {
         echo "📦 Clonando repositorio desde GitHub..."
@@ -60,16 +40,16 @@ pipeline {
         )
 
         dir(env.SERVICE) {
-          echo "🧱 Compilando y empacando ${SERVICE}..."
+          echo "🧱 Compilando y ejecutando tests de ${SERVICE}..."
           sh "mvn -q -Dstyle.color=always clean package -DskipTests=false"
         }
       }
     }
 
-    // 2) SonarQube
+    // 2️⃣ SonarQube (SAST)
     stage('SonarQube Analysis') {
       steps {
-        echo "🔍 Ejecutando análisis de código con SonarQube..."
+        echo "🔍 Análisis de calidad de código (SonarQube)..."
         dir(env.SERVICE) {
           withCredentials([string(credentialsId: 'sonartoken', variable: 'SONAR_TOKEN')]) {
             withSonarQubeEnv('sonar') {
@@ -87,10 +67,10 @@ pipeline {
       }
     }
 
-    // 3) Trivy Source Scan
+    // 3️⃣ Trivy Scan (antes del build Docker)
     stage('Trivy Source Scan') {
       steps {
-        echo "🧩 Escaneando dependencias con Trivy..."
+        echo "🧩 Escaneando vulnerabilidades en dependencias..."
         dir(env.SERVICE) {
           sh """
             trivy fs . \
@@ -102,20 +82,20 @@ pipeline {
       }
     }
 
-    // 4) Docker Build
+    // 4️⃣ Docker Build
     stage('Build Docker Image') {
       steps {
         dir(env.SERVICE) {
-          echo "🐳 Construyendo imagen Docker..."
+          echo "🐳 Construyendo imagen Docker de ${SERVICE}..."
           sh "docker build -t ${IMAGE} ."
         }
       }
     }
 
-    // 5) Ejecutar localmente en Docker
-    stage('Run Local in Docker') {
+    // 5️⃣ Run Local Container
+    stage('Run Locally in Docker') {
       steps {
-        echo "🧩 Iniciando ${SERVICE} en red local (${NET}) para pruebas internas..."
+        echo "🚀 Iniciando ${SERVICE} en red local (${NET})..."
         sh """
           # Crear red si no existe
           docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
@@ -123,13 +103,14 @@ pipeline {
           # Detener y eliminar contenedor previo si existe
           docker rm -f ${SERVICE} >/dev/null 2>&1 || true
 
-          # Ejecutar contenedor en red local
+          # Ejecutar el contenedor
           docker run -d \
             --name ${SERVICE} \
             --network ${NET} \
             -p ${HOST}:${PORT} \
-            -e SPRING_PROFILES_ACTIVE=dev \
+            -e SPRING_APPLICATION_NAME=config-server \
             -e SERVER_PORT=${PORT} \
+            -e SPRING_PROFILES_ACTIVE=dev \
             ${IMAGE}
 
           echo "✅ ${SERVICE} levantado localmente en http://localhost:${HOST}"
@@ -137,10 +118,10 @@ pipeline {
       }
     }
 
-    // 6) Trivy Image Scan
+    // 6️⃣ Trivy Image Scan (después del build y run)
     stage('Trivy Image Scan') {
       steps {
-        echo "🔎 Escaneando imagen Docker..."
+        echo "🔎 Escaneando vulnerabilidades en la imagen Docker..."
         sh """
           trivy image ${IMAGE} \
             --format table \
@@ -149,69 +130,15 @@ pipeline {
         """
       }
     }
-
-    // 7) Push to Artifact Registry
-    stage('Push to Artifact Registry') {
-      steps {
-        echo "☁️ Autenticando en GCP y empujando imagen..."
-        withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
-          withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-            sh """
-              gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-              gcloud config set project "$GCP_PROJECT_ID"
-              gcloud auth configure-docker "$AR_HOST" --quiet
-
-              if ! gcloud artifacts repositories describe "$REPOSITORY" --location="$REGION" --project="$GCP_PROJECT_ID" >/dev/null 2>&1 ; then
-                gcloud artifacts repositories create "$REPOSITORY" \
-                  --repository-format=docker \
-                  --location="$REGION" \
-                  --description="Docker repo for $SERVICE" \
-                  --project="$GCP_PROJECT_ID"
-              fi
-
-              docker tag "$IMAGE" "$FULL_IMAGE_NAME"
-              docker push "$FULL_IMAGE_NAME"
-            """
-          }
-        }
-      }
-    }
-
-    // 8) Deploy to Cloud Run
-    stage('Deploy to Cloud Run') {
-      steps {
-        echo "🚀 Desplegando ${SERVICE} en Cloud Run..."
-        withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
-          withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-            sh """
-              gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-              gcloud config set project "$GCP_PROJECT_ID"
-
-              gcloud run deploy "$CR_SERVICE" \
-                --image="$FULL_IMAGE_NAME" \
-                --region="$REGION" \
-                --platform="$CR_PLATFORM" \
-                --port="$CR_PORT" \
-                --memory="$CR_MEMORY" \
-                --cpu="$CR_CPU" \
-                --concurrency="$CR_CONCURRENCY" \
-                --min-instances="$CR_MIN_INST" \
-                --max-instances="$CR_MAX_INST" \
-                --allow-unauthenticated \
-                --quiet
-            """
-          }
-        }
-      }
-    }
   }
 
   post {
     success {
-      echo "✅ Build, análisis, despliegue local y despliegue en GCP completados con éxito para ${SERVICE}!"
+      echo "✅ Pipeline de QA y despliegue local completado para ${SERVICE}"
+      echo "🌐 Accede al Config Server: http://localhost:${HOST}/actuator/health"
     }
     failure {
-      echo "❌ Falló el pipeline de ${SERVICE}!"
+      echo "❌ Falló el pipeline de ${SERVICE}"
     }
     always {
       echo "=========================================="
