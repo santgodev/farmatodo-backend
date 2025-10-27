@@ -1,4 +1,4 @@
-pipeline { 
+pipeline {
     agent any
 
     tools {
@@ -12,7 +12,7 @@ pipeline {
         PORT    = '8888'
         HOST    = '8889'
         NET     = 'farmatodo-network'
-        SONAR_SCANNER_HOME = tool 'sonar7' // 🔸 Asegúrate que el nombre del scanner coincida con tu configuración global
+        SONAR_SCANNER_HOME = tool 'sonar7'
     }
 
     options {
@@ -22,6 +22,7 @@ pipeline {
 
     stages {
 
+        // 1️⃣ CHECKOUT Y COMPILACIÓN (sin crear imagen todavía)
         stage('Checkout & Build') {
             steps {
                 echo "📦 Clonando repositorio desde GitHub..."
@@ -37,11 +38,11 @@ pipeline {
                 dir(SERVICE) {
                     echo "🧱 Compilando y empacando ${SERVICE}..."
                     sh 'mvn clean package -DskipTests=false'
-                    sh "docker build -t ${IMAGE} ."
                 }
             }
         }
 
+        // 2️⃣ ANÁLISIS ESTÁTICO DEL CÓDIGO (SAST)
         stage('SonarQube Analysis') {
             steps {
                 echo "🔍 Ejecutando análisis de código con SonarQube..."
@@ -50,7 +51,7 @@ pipeline {
                         withSonarQubeEnv('sonar') {
                             sh """
                                 ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
-                                    -Dsonar.projectKey=jenkinsgcp \
+                                    -Dsonar.projectKey=${SERVICE} \
                                     -Dsonar.sources=. \
                                     -Dsonar.host.url=http://sonarqube-dind:9000 \
                                     -Dsonar.java.binaries=target/classes \
@@ -61,34 +62,58 @@ pipeline {
                 }
             }
         }
-        stage('Trivy FS Scan'){
+
+        // 3️⃣ ANÁLISIS DE ARCHIVOS Y DEPENDENCIAS (TRIVY FS)
+        stage('Trivy Source Scan') {
             steps {
-                echo 'Scanning File System with Trivy FS ...'
-		sh 'trivy fs --format table -o FSScanReport.html'
+                echo "🧩 Escaneando el sistema de archivos del proyecto con Trivy (antes del build Docker)..."
+                dir(SERVICE) {
+                    sh """
+                        trivy fs . \
+                            --format table \
+                            --severity HIGH,CRITICAL \
+                            -o trivy-fs-report.txt || true
+                    """
+                }
             }
         }
 
+        // 4️⃣ CONSTRUCCIÓN DE IMAGEN DOCKER
+        stage('Build Docker Image') {
+            steps {
+                dir(SERVICE) {
+                    echo "🐳 Construyendo imagen Docker para ${SERVICE}..."
+                    sh "docker build -t ${IMAGE} ."
+                }
+            }
+        }
+
+        // 5️⃣ ANÁLISIS DE IMAGEN DOCKER (TRIVY IMAGE)
+        stage('Trivy Image Scan') {
+            steps {
+                echo "🔎 Escaneando imagen Docker con Trivy..."
+                sh """
+                    trivy image ${IMAGE} \
+                        --format table \
+                        --severity HIGH,CRITICAL \
+                        -o trivy-image-report.txt || true
+                """
+            }
+        }
+
+        // 6️⃣ DEPLOY FINAL
         stage('Deploy') {
             steps {
                 script {
                     echo "🚀 Desplegando ${SERVICE}..."
-
-                    // Crear red Docker si no existe
                     sh """
                         docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
-                    """
-
-                    // Eliminar contenedor previo si existe
-                    sh "docker rm -f ${SERVICE} >/dev/null 2>&1 || true"
-
-                    // Desplegar contenedor actualizado
-                    sh """
+                        docker rm -f ${SERVICE} >/dev/null 2>&1 || true
                         docker run -d --name ${SERVICE} \
                             -p ${HOST}:${PORT} \
                             --network ${NET} \
                             ${IMAGE}
                     """
-
                     echo "✅ ${SERVICE} desplegado correctamente!"
                     sh "docker ps --filter name=${SERVICE}"
                 }
@@ -109,7 +134,10 @@ pipeline {
             echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
             echo "Duration: ${currentBuild.durationString}"
             echo "=========================================="
+
+            // Guarda artefactos de seguridad
             archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
+            archiveArtifacts artifacts: "**/trivy-*.txt", allowEmptyArchive: true
         }
     }
 }
