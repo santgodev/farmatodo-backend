@@ -7,10 +7,10 @@ pipeline {
     }
 
     environment {
-        SERVICE = 'client-service'
+        SERVICE = 'cart-service'
         IMAGE   = "farmatodo/${SERVICE}:latest"
-        PORT    = '8081'
-        HOST    = '8081'
+        PORT    = '8084'
+        HOST    = '8084'
         NET     = 'farmatodo-network'
     }
 
@@ -31,7 +31,7 @@ pipeline {
             steps {
                 dir(SERVICE) {
                     echo "🧱 Building ${SERVICE}..."
-                    // Saltamos los tests por ahora para evitar fallos de conexión al config-server
+                    // Saltamos los tests por ahora para evitar fallos por dependencias del config-server
                     sh 'mvn clean package -DskipTests'
                 }
             }
