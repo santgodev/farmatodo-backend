@@ -1,4 +1,4 @@
-pipeline {
+pipeline { 
     agent any
 
     tools {
@@ -17,7 +17,16 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                checkout scm
+                echo "📦 Clonando repositorio desde GitHub..."
+                checkout scmGit(
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        credentialsId: 'jenkins-gcp',
+                        url: 'https://github.com/santgodev/farmatodo-backend.git'
+                    ]]
+                )
+
                 dir(SERVICE) {
                     echo "🧱 Building and packaging ${SERVICE}..."
                     sh 'mvn clean package -DskipTests=false'
