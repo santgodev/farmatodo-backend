@@ -31,7 +31,7 @@ pipeline {
             steps {
                 dir(SERVICE) {
                     echo "🧱 Building ${SERVICE}..."
-                    // Saltamos los tests por ahora para evitar fallos de conexión al config-server
+                    // Saltamos los tests por ahora
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -51,15 +51,15 @@ pipeline {
                 script {
                     echo "🚀 Deploying ${SERVICE}..."
 
-                    // Aseguramos que la red Docker exista
+                    // Crear red si no existe
                     sh """
                         docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
                     """
 
-                    // Eliminamos contenedor previo (si existe)
+                    // Eliminar contenedor previo
                     sh "docker rm -f ${SERVICE} >/dev/null 2>&1 || true"
 
-                    // Desplegamos el nuevo contenedor
+                    // Ejecutar nuevo contenedor
                     sh """
                         docker run -d --name ${SERVICE} \
                             -p ${HOST}:${PORT} \
@@ -68,3 +68,26 @@ pipeline {
                     """
 
                     echo "✅ ${SERVICE} deployed successfully!"
+                    sh "docker ps --filter name=${SERVICE}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 Build and deploy completed successfully for ${SERVICE}!"
+        }
+        failure {
+            echo "❌ Build or deployment failed for ${SERVICE}!"
+        }
+        always {
+            echo "=========================================="
+            echo "Service: ${SERVICE}"
+            echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
+            echo "Duration: ${currentBuild.durationString}"
+            echo "=========================================="
+            archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
+        }
+    }
+}
