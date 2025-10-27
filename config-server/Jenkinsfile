@@ -12,6 +12,8 @@ pipeline {
         IMAGE_BASE = "farmatodo/${SERVICE}"
         IMAGE_TAG = "${BUILD_NUMBER}"
         IMAGE = "${IMAGE_BASE}:${IMAGE_TAG}"
+		IMAGE_NAME = "java-app"
+
 
         // ⚙️ Configuración de red y puertos locales
         PORT = '8888'
