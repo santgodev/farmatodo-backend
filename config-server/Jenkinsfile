@@ -7,12 +7,25 @@ pipeline {
     }
 
     environment {
+        // 🧩 Variables principales del servicio
         SERVICE = 'config-server'
-        IMAGE   = "farmatodo/${SERVICE}:latest"
-        PORT    = '8888'
-        HOST    = '8889'
-        NET     = 'farmatodo-network'
+        IMAGE_BASE = "farmatodo/${SERVICE}"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE = "${IMAGE_BASE}:${IMAGE_TAG}"
+
+        // ⚙️ Configuración de red y puertos locales
+        PORT = '8888'
+        HOST = '8889'
+        NET = 'farmatodo-network'
+
+        // 🔍 Herramientas y análisis
         SONAR_SCANNER_HOME = tool 'sonar7'
+
+        // ☁️ Configuración GCP / Artifact Registry
+        GCP_PROJECT_ID = 'planar-momentum-469121-n0'
+        REGION = 'us-central1'
+        REPOSITORY = 'java-app-repo'
+        FULL_IMAGE_NAME = "us-docker.pkg.dev/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
     }
 
     options {
@@ -22,7 +35,7 @@ pipeline {
 
     stages {
 
-        // 1️⃣ CHECKOUT Y COMPILACIÓN (sin crear imagen todavía)
+        // 1️⃣ CHECKOUT Y BUILD (sin imagen aún)
         stage('Checkout & Build') {
             steps {
                 echo "📦 Clonando repositorio desde GitHub..."
@@ -42,7 +55,7 @@ pipeline {
             }
         }
 
-        // 2️⃣ ANÁLISIS ESTÁTICO DEL CÓDIGO (SAST)
+        // 2️⃣ ANÁLISIS ESTÁTICO (SAST)
         stage('SonarQube Analysis') {
             steps {
                 echo "🔍 Ejecutando análisis de código con SonarQube..."
@@ -63,10 +76,10 @@ pipeline {
             }
         }
 
-        // 3️⃣ ANÁLISIS DE ARCHIVOS Y DEPENDENCIAS (TRIVY FS)
+        // 3️⃣ ANÁLISIS DE DEPENDENCIAS Y FS (antes del build Docker)
         stage('Trivy Source Scan') {
             steps {
-                echo "🧩 Escaneando el sistema de archivos del proyecto con Trivy (antes del build Docker)..."
+                echo "🧩 Escaneando dependencias y archivos con Trivy..."
                 dir(SERVICE) {
                     sh """
                         trivy fs . \
@@ -88,7 +101,7 @@ pipeline {
             }
         }
 
-        // 5️⃣ ANÁLISIS DE IMAGEN DOCKER (TRIVY IMAGE)
+        // 5️⃣ ANÁLISIS DE IMAGEN DOCKER
         stage('Trivy Image Scan') {
             steps {
                 echo "🔎 Escaneando imagen Docker con Trivy..."
@@ -100,17 +113,37 @@ pipeline {
                 """
             }
         }
+
+        // 6️⃣ AUTENTICACIÓN Y PUSH A ARTIFACT REGISTRY
         stage('Authenticate with GCP, Tag & Push to Artifact Registry') {
             steps {
-		echo 'Authenticate with GCP, tag and Push Image to Artifact Registry'
+                echo "🔐 Autenticando con GCP y subiendo imagen a Artifact Registry..."
+                withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
+                    withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
+                        sh """
+                            echo '▶ Activando cuenta de servicio GCP...'
+                            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                            gcloud config set project $GCP_PROJECT_ID
+
+                            echo '▶ Configurando Docker para Artifact Registry...'
+                            gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+
+                            echo '▶ Etiquetando imagen...'
+                            docker tag ${IMAGE} ${FULL_IMAGE_NAME}
+
+                            echo '▶ Subiendo imagen a Artifact Registry...'
+                            docker push ${FULL_IMAGE_NAME}
+                        """
+                    }
+                }
             }
         }
 
-        // 6️⃣ DEPLOY FINAL
+        // 7️⃣ DEPLOY LOCAL (solo pruebas o entorno dev)
         stage('Deploy') {
             steps {
                 script {
-                    echo "🚀 Desplegando ${SERVICE}..."
+                    echo "🚀 Desplegando ${SERVICE} localmente..."
                     sh """
                         docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
                         docker rm -f ${SERVICE} >/dev/null 2>&1 || true
@@ -126,6 +159,7 @@ pipeline {
         }
     }
 
+    // 🧾 Post-Actions
     post {
         success {
             echo "✅ Build, análisis y despliegue completados con éxito para ${SERVICE}!"
@@ -140,7 +174,6 @@ pipeline {
             echo "Duration: ${currentBuild.durationString}"
             echo "=========================================="
 
-            // Guarda artefactos de seguridad
             archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
             archiveArtifacts artifacts: "**/trivy-*.txt", allowEmptyArchive: true
         }
