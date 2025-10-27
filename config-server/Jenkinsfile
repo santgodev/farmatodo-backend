@@ -12,6 +12,7 @@ pipeline {
         PORT    = '8888'
         HOST    = '8889'
         NET     = 'farmatodo-network'
+        SONAR_SCANNER_HOME = tool 'sonar7' // 🔸 Asegúrate que el nombre del scanner coincida con tu configuración global
     }
 
     options {
@@ -45,15 +46,15 @@ pipeline {
             steps {
                 echo "🔍 Ejecutando análisis de código con SonarQube..."
                 dir(SERVICE) {
-                    withCredentials([string(credentialsId: 'sonartoken', variable: 'sonarToken')]) {
+                    withCredentials([string(credentialsId: 'sonartoken', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('sonar') {
                             sh """
-                                sonar7/bin/sonar-scanner \
+                                ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
                                     -Dsonar.projectKey=jenkinsgcp \
                                     -Dsonar.sources=. \
-                                    -Dsonar.host.url=http://localhost:9000 \
+                                    -Dsonar.host.url=$SONAR_HOST_URL \
                                     -Dsonar.java.binaries=target/classes \
-                                    -Dsonar.token=$sonarToken
+                                    -Dsonar.token=$SONAR_TOKEN
                             """
                         }
                     }
