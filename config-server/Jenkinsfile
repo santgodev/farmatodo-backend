@@ -91,11 +91,21 @@ pipeline {
         stage('Trivy Image Scan') {
             steps {
                 echo "🔎 Escaneando imagen Docker con Trivy..."
-                sh """
-                    echo '🐳 Resultados del análisis de la imagen (${IMAGE}):'
-                    trivy image ${IMAGE} --format table --severity HIGH,CRITICAL || true
-                    trivy image ${IMAGE} --format template --template "@contrib/html.tpl" -o trivy-image-report.html || true
-                """
+                script {
+                    sh """
+                        echo '🐳 Verificando existencia de la imagen: ${IMAGE}'
+                        docker image inspect ${IMAGE} >/dev/null 2>&1 || {
+                            echo '⚠️ La imagen no existe localmente. Saltando análisis de imagen.'
+                            exit 0
+                        }
+
+                        echo '📋 Resultados del análisis de vulnerabilidades en la imagen:'
+                        trivy image "${IMAGE}" --format table --exit-code 1 --severity CRITICAL
+
+                        echo '📝 Generando reporte HTML de vulnerabilidades...'
+                        trivy image "${IMAGE}" --format template --template "@contrib/html.tpl" -o trivy-image-report.html || true
+                    """
+                }
             }
         }
 
