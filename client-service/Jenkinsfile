@@ -31,7 +31,6 @@ pipeline {
             steps {
                 dir(SERVICE) {
                     echo "🧱 Building ${SERVICE}..."
-                    // Saltamos los tests por ahora
                     sh 'mvn clean package -DskipTests'
                 }
             }
@@ -51,22 +50,13 @@ pipeline {
                 script {
                     echo "🚀 Deploying ${SERVICE}..."
 
-                    // Asegurar que exista la red
                     sh """
                         docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
-                    """
+                        docker rm -f ${SERVICE} >/dev/null 2>&1 || true
 
-                    // Eliminar contenedor previo si existe
-                    sh "docker rm -f ${SERVICE} >/dev/null 2>&1 || true"
-
-                    // Obtener la IP del host (Windows o Linux)
-                    def hostIp = sh(script: "ip route | awk '/default/ {print \$3}'", returnStdout: true).trim()
-                    echo "🌐 Host IP detectada: ${hostIp}"
-
-                    // Ejecutar contenedor mapeando al host real
-                    sh """
+                        # Ejecutar contenedor con alias hacia el host de Windows
                         docker run -d --name ${SERVICE} \
-                            --add-host=host.docker.internal:${hostIp} \
+                            --add-host=host.docker.internal:host-gateway \
                             -p ${HOST}:${PORT} \
                             --network ${NET} \
                             ${IMAGE}
