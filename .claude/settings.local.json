@@ -33,7 +33,9 @@
       "Bash(docker exec:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(mvnw.cmd test:*)",
+      "Bash(.mvnw.cmd test:*)"
     ],
     "deny": [],
     "ask": []

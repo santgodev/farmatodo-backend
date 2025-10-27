@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateOrderRequestDTO {
-    private Long userId;
+    private Long clientId;
     private String token;
 }

@@ -2,38 +2,17 @@ spring:
   application:
     name: cart-service
 
-  datasource:
-    url: jdbc:postgresql://localhost:5434/cartdb
-    username: postgres
-    password: postgres
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-
-server:
-  port: 8084
-
-# API Key for authentication
-api:
-  key: cart-service-api-key-change-in-production
-
-# External services configuration
-services:
-  product:
-    url: http://localhost:8083
-    apiKey: product-service-api-key-change-in-production
-
-# Logging configuration
-logging:
-  level:
-    com.farmatodo.cart_service: DEBUG
-    org.springframework.web: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{transactionId}] %-5level %logger{36} - %msg%n"
+  # Spring Cloud Config Client - connects to config-server microservice
+  # Config-server fetches configuration from: https://github.com/santgodev/farmatodo-config-service
+  config:
+    import: optional:configserver:http://localhost:8888
+  cloud:
+    config:
+      uri: http://localhost:8888
+      fail-fast: false
+      enabled: true
+      label: master
+      profile: default
+      # Set to true in production to retry connection to config-server
+      retry:
+        enabled: false

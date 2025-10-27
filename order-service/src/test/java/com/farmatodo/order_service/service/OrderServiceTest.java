@@ -66,7 +66,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         validOrderRequest = CreateOrderRequestDTO.builder()
-                .userId(1L)
+                .clientId(1L)
                 .token("test-token-12345")
                 .build();
 
@@ -501,7 +501,7 @@ class OrderServiceTest {
     void testCreateOrder_InvalidToken_ShouldThrowBusinessException() {
         // Arrange
         CreateOrderRequestDTO invalidRequest = CreateOrderRequestDTO.builder()
-                .userId(1L)
+                .clientId(1L)
                 .token(null)
                 .build();
 

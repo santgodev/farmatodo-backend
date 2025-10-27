@@ -47,7 +47,7 @@ class OrderControllerTest {
     @BeforeEach
     void setUp() {
         validOrderRequest = CreateOrderRequestDTO.builder()
-                .userId(1L)
+                .clientId(1L)
                 .token("test-token-uuid")
                 .build();
 
@@ -240,7 +240,7 @@ class OrderControllerTest {
     void testCreateOrder_MissingUserId_ShouldProcessRequest() throws Exception {
         // Arrange
         CreateOrderRequestDTO invalidRequest = CreateOrderRequestDTO.builder()
-                .userId(null)  // Missing userId
+                .clientId(null)  // Missing clientId
                 .token("test-token-uuid")
                 .build();
 
@@ -263,7 +263,7 @@ class OrderControllerTest {
     void testCreateOrder_MissingToken_ShouldProcessRequest() throws Exception {
         // Arrange
         CreateOrderRequestDTO invalidRequest = CreateOrderRequestDTO.builder()
-                .userId(1L)
+                .clientId(1L)
                 .token(null)  // Missing token
                 .build();
 

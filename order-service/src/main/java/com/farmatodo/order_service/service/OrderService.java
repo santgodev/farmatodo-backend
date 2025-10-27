@@ -35,30 +35,30 @@ public class OrderService {
     @Transactional
     public OrderResponseDTO createOrder(CreateOrderRequestDTO request) {
         String transactionId = MDC.get("transactionId");
-        logger.info("Creating order - TransactionId: {}, UserId: {}", transactionId, request.getUserId());
+        logger.info("Creating order - TransactionId: {}, ClientId: {}", transactionId, request.getClientId());
 
         logService.logInfo("Order creation started",
-                String.format("UserId: %d, Token: %s",
-                        request.getUserId(), request.getToken()));
+                String.format("ClientId: %d, Token: %s",
+                        request.getClientId(), request.getToken()));
 
         // Step 1: Fetch cart from cart-service
-        logger.info("Fetching cart for userId: {}", request.getUserId());
+        logger.info("Fetching cart for clientId: {}", request.getClientId());
         CartDTO cart;
         try {
-            cart = cartServiceClient.getCartByUserId(request.getUserId());
+            cart = cartServiceClient.getCartByUserId(request.getClientId());
             logService.logInfo("Cart data fetched",
-                    String.format("UserId: %d, CartId: %d, Items count: %d, TotalAmount: %s",
-                            request.getUserId(), cart.getId(), cart.getItemCount(), cart.getTotalAmount()));
+                    String.format("ClientId: %d, CartId: %d, Items count: %d, TotalAmount: %s",
+                            request.getClientId(), cart.getId(), cart.getItemCount(), cart.getTotalAmount()));
         } catch (Exception e) {
             logService.logError("Failed to fetch cart data",
-                    String.format("UserId: %d, Error: %s", request.getUserId(), e.getMessage()));
+                    String.format("ClientId: %d, Error: %s", request.getClientId(), e.getMessage()));
             throw e;
         }
 
         // Validate cart has items
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
             logService.logError("Cart is empty",
-                    String.format("UserId: %d, CartId: %d", request.getUserId(), cart.getId()));
+                    String.format("ClientId: %d, CartId: %d", request.getClientId(), cart.getId()));
             throw new BusinessException(
                     "Cart is empty. Cannot create order.",
                     "CART_EMPTY",
@@ -67,23 +67,23 @@ public class OrderService {
         }
 
         // Step 2: Fetch client information
-        logger.info("Fetching client information for userId: {}", request.getUserId());
+        logger.info("Fetching client information for clientId: {}", request.getClientId());
         ClientDTO client;
         try {
-            client = clientServiceClient.getClientById(request.getUserId());
+            client = clientServiceClient.getClientById(request.getClientId());
             logService.logInfo("Client data fetched",
                     String.format("ClientId: %d, Name: %s, Email: %s",
                             client.getId(), client.getName(), client.getEmail()));
         } catch (Exception e) {
             logService.logError("Failed to fetch client data",
-                    String.format("UserId: %d, Error: %s", request.getUserId(), e.getMessage()));
+                    String.format("ClientId: %d, Error: %s", request.getClientId(), e.getMessage()));
             throw e;
         }
 
         // Step 3: Create order in PENDING state
         logger.info("Creating order entity");
         Order order = Order.builder()
-                .clientId(request.getUserId())
+                .clientId(request.getClientId())
                 .token(request.getToken())
                 .status("PENDING")
                 .transactionId(transactionId)
@@ -117,7 +117,7 @@ public class OrderService {
                 .token(request.getToken())
                 .amount(order.getTotalAmount())
                 .orderId(order.getId())
-                .clientId(request.getUserId())
+                .clientId(request.getClientId())
                 .build();
 
         PaymentResponseDTO paymentResponse;
@@ -137,16 +137,16 @@ public class OrderService {
 
                 // Clear cart after successful payment
                 try {
-                    logger.info("Clearing cart for userId: {} after successful payment", request.getUserId());
-                    cartServiceClient.clearCart(request.getUserId());
+                    logger.info("Clearing cart for clientId: {} after successful payment", request.getClientId());
+                    cartServiceClient.clearCart(request.getClientId());
                     logService.logInfo("Cart cleared after payment",
-                            String.format("UserId: %d, OrderId: %d", request.getUserId(), order.getId()));
+                            String.format("ClientId: %d, OrderId: %d", request.getClientId(), order.getId()));
                 } catch (Exception ex) {
-                    logger.warn("Failed to clear cart for userId: {} after payment approval - Error: {}",
-                            request.getUserId(), ex.getMessage());
+                    logger.warn("Failed to clear cart for clientId: {} after payment approval - Error: {}",
+                            request.getClientId(), ex.getMessage());
                     logService.logWarn("Cart clearing failed",
-                            String.format("UserId: %d, OrderId: %d, Error: %s",
-                                    request.getUserId(), order.getId(), ex.getMessage()));
+                            String.format("ClientId: %d, OrderId: %d, Error: %s",
+                                    request.getClientId(), order.getId(), ex.getMessage()));
                 }
             } else {
                 order.setStatus("REJECTED");

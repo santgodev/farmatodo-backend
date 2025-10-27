@@ -23,7 +23,7 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderResponseDTO> createOrder(@RequestBody CreateOrderRequestDTO request) {
         String transactionId = MDC.get("transactionId");
-        logger.info("POST /orders - TransactionId: {}, UserId: {}", transactionId, request.getUserId());
+        logger.info("POST /orders - TransactionId: {}, ClientId: {}", transactionId, request.getClientId());
 
         OrderResponseDTO response = orderService.createOrder(request);
 
