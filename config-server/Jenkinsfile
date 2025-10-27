@@ -117,25 +117,27 @@ pipeline {
         // 6️⃣ AUTENTICACIÓN Y PUSH A ARTIFACT REGISTRY
         stage('Authenticate with GCP, Tag & Push to Artifact Registry') {
             steps {
-                echo "🔐 Autenticando con GCP y subiendo imagen a Artifact Registry..."
-                withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
-                    withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-                        sh """
-                            echo '▶ Activando cuenta de servicio GCP...'
-                            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-                            gcloud config set project $GCP_PROJECT_ID
-
-                            echo '▶ Configurando Docker para Artifact Registry...'
-                            gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
-
-                            echo '▶ Etiquetando imagen...'
-                            docker tag ${IMAGE} ${FULL_IMAGE_NAME}
-
-                            echo '▶ Subiendo imagen a Artifact Registry...'
-                            docker push ${FULL_IMAGE_NAME}
-                        """
-                    }
-                }
+		echo 'Authenticate with GCP, tag and Push Image to Artifact Registry'
+		withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
+    			withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
+				sh '''
+					echo Activating GCP service account...
+                    			gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                    			gcloud config set project $GCP_PROJECT_ID
+		       
+                    			echo Configuring Docker to use gcloud credentials...
+                    			gcloud auth configure-docker us-docker.pkg.dev --quiet
+    				'''
+				script {
+					sh '''
+						gcloud artifacts repositories create java-app-repo-${IMAGE_TAG} --repository-format=docker --location=us --description="Docker repository" --project=$GCP_PROJECT_ID
+     					'''
+					sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${FULL_IMAGE_NAME}"
+					sh "docker push ${FULL_IMAGE_NAME}"
+					echo "Image pushed to: ${FULL_IMAGE_NAME}"
+				}
+			}
+		}
             }
         }
 
