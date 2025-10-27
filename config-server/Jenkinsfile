@@ -45,15 +45,15 @@ pipeline {
             steps {
                 echo "🔍 Ejecutando análisis de código con SonarQube..."
                 dir(SERVICE) {
-                    withCredentials([string(credentialsId: 'sonartoken', variable: 'SONAR_TOKEN')]) {
+                    withCredentials([string(credentialsId: 'sonartoken', variable: 'sonarToken')]) {
                         withSonarQubeEnv('sonar') {
                             sh """
-                                sonar-scanner \
+                                sonar7/bin/sonar-scanner \
                                     -Dsonar.projectKey=jenkinsgcp \
                                     -Dsonar.sources=. \
                                     -Dsonar.host.url=http://localhost:9000 \
                                     -Dsonar.java.binaries=target/classes \
-                                    -Dsonar.token=$SONAR_TOKEN
+                                    -Dsonar.token=$sonarToken
                             """
                         }
                     }
