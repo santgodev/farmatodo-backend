@@ -62,53 +62,28 @@ pipeline {
                 }
             }
         }
-
-        // 3️⃣ ANÁLISIS DE DEPENDENCIAS Y ARCHIVOS (Trivy FS)
-        stage('Trivy Source Scan') {
+        stage('Trivy FS Scan'){
             steps {
-                echo "🧩 Escaneando dependencias y archivos con Trivy..."
-                dir(SERVICE) {
-                    sh """
-                        echo '📄 Resultados del análisis del sistema de archivos (Trivy FS):'
-                        trivy fs . --format table --severity HIGH,CRITICAL || true
-                        trivy fs . --format template --template "@contrib/html.tpl" -o trivy-fs-report.html || true
-                    """
-                }
+                echo 'Scanning File System with Trivy FS ...'
+		sh 'trivy fs --format table -o FSScanReport.html'
             }
         }
-
-        // 4️⃣ BUILD DE IMAGEN DOCKER
-        stage('Build Docker Image') {
+        stage('Build & Tag Docker Image'){
             steps {
-                dir(SERVICE) {
-                    echo "🐳 Construyendo imagen Docker para ${SERVICE}..."
-                    sh "docker build -t ${IMAGE} ."
-                }
+                echo 'Building the Java App Docker Image'
+		script {
+			sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+		}
             }
         }
-
-        // 5️⃣ ANÁLISIS DE IMAGEN DOCKER (Trivy Image)
-        stage('Trivy Image Scan') {
+        stage('Trivy Security Scan'){
             steps {
-                echo "🔎 Escaneando imagen Docker con Trivy..."
-                script {
-                    sh """
-                        echo '🐳 Verificando existencia de la imagen: ${IMAGE}'
-                        docker image inspect ${IMAGE} >/dev/null 2>&1 || {
-                            echo '⚠️ La imagen no existe localmente. Saltando análisis de imagen.'
-                            exit 0
-                        }
-
-                        echo '📋 Resultados del análisis de vulnerabilidades en la imagen:'
-                        trivy image "${IMAGE}" --format table --exit-code 1 --severity CRITICAL
-
-                        echo '📝 Generando reporte HTML de vulnerabilidades...'
-                        trivy image "${IMAGE}" --format template --template "@contrib/html.tpl" -o trivy-image-report.html || true
-                    """
-                }
+                echo 'Scanning Docker Image with Trivy'
+		sh '''
+  			trivy --severity HIGH,CRITICAL --cache-dir ${WORKSPACE}/.trivy-cache --no-progress --format table -o trivyFSScanReport.html image ${IMAGE_NAME}:${IMAGE_TAG}
+     		'''
             }
         }
-
         // 6️⃣ DEPLOY FINAL
         stage('Deploy') {
             steps {
