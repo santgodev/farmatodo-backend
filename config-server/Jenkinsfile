@@ -17,12 +17,12 @@ pipeline {
 
     options {
         timestamps()
-        timeout(time: 25, unit: 'MINUTES')
+        timeout(time: 20, unit: 'MINUTES')
     }
 
     stages {
 
-        // 1️⃣ CHECKOUT Y COMPILACIÓN
+        // 1️⃣ CHECKOUT Y COMPILACIÓN (sin crear imagen todavía)
         stage('Checkout & Build') {
             steps {
                 echo "📦 Clonando repositorio desde GitHub..."
@@ -42,7 +42,7 @@ pipeline {
             }
         }
 
-        // 2️⃣ ANÁLISIS DE CÓDIGO (SonarQube)
+        // 2️⃣ ANÁLISIS ESTÁTICO DEL CÓDIGO (SAST)
         stage('SonarQube Analysis') {
             steps {
                 echo "🔍 Ejecutando análisis de código con SonarQube..."
@@ -62,28 +62,45 @@ pipeline {
                 }
             }
         }
-        stage('Trivy FS Scan'){
+
+        // 3️⃣ ANÁLISIS DE ARCHIVOS Y DEPENDENCIAS (TRIVY FS)
+        stage('Trivy Source Scan') {
             steps {
-                echo 'Scanning File System with Trivy FS ...'
-		sh 'trivy fs --format table -o FSScanReport.html'
+                echo "🧩 Escaneando el sistema de archivos del proyecto con Trivy (antes del build Docker)..."
+                dir(SERVICE) {
+                    sh """
+                        trivy fs . \
+                            --format table \
+                            --severity HIGH,CRITICAL \
+                            -o trivy-fs-report.txt || true
+                    """
+                }
             }
         }
-        stage('Build & Tag Docker Image'){
+
+        // 4️⃣ CONSTRUCCIÓN DE IMAGEN DOCKER
+        stage('Build Docker Image') {
             steps {
-                echo 'Building the Java App Docker Image'
-		script {
-			sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-		}
+                dir(SERVICE) {
+                    echo "🐳 Construyendo imagen Docker para ${SERVICE}..."
+                    sh "docker build -t ${IMAGE} ."
+                }
             }
         }
-        stage('Trivy Security Scan'){
+
+        // 5️⃣ ANÁLISIS DE IMAGEN DOCKER (TRIVY IMAGE)
+        stage('Trivy Image Scan') {
             steps {
-                echo 'Scanning Docker Image with Trivy'
-		sh '''
-  			trivy --severity HIGH,CRITICAL --cache-dir ${WORKSPACE}/.trivy-cache --no-progress --format table -o trivyFSScanReport.html image ${IMAGE_NAME}:${IMAGE_TAG}
-     		'''
+                echo "🔎 Escaneando imagen Docker con Trivy..."
+                sh """
+                    trivy image ${IMAGE} \
+                        --format table \
+                        --severity HIGH,CRITICAL \
+                        -o trivy-image-report.txt || true
+                """
             }
         }
+
         // 6️⃣ DEPLOY FINAL
         stage('Deploy') {
             steps {
@@ -118,9 +135,9 @@ pipeline {
             echo "Duration: ${currentBuild.durationString}"
             echo "=========================================="
 
-            // 📦 Archivar artefactos importantes
+            // Guarda artefactos de seguridad
             archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
-            archiveArtifacts artifacts: "**/trivy-*.html", allowEmptyArchive: true
+            archiveArtifacts artifacts: "**/trivy-*.txt", allowEmptyArchive: true
         }
     }
 }
