@@ -7,10 +7,10 @@ pipeline {
     }
 
     environment {
-        SERVICE = 'client-service'
+        SERVICE = 'token-service'
         IMAGE   = "farmatodo/${SERVICE}:latest"
-        PORT    = '8081'
-        HOST    = '8081'
+        PORT    = '8082'
+        HOST    = '8082'
         NET     = 'farmatodo-network'
     }
 
@@ -20,6 +20,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 echo "📦 Checking out source code..."
@@ -31,7 +32,7 @@ pipeline {
             steps {
                 dir(SERVICE) {
                     echo "🧱 Building ${SERVICE}..."
-                    // Saltamos los tests por ahora para evitar fallos de conexión al config-server
+                    // Saltamos los tests por ahora para evitar dependencias externas
                     sh 'mvn clean package -DskipTests'
                 }
             }
