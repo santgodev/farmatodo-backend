@@ -13,8 +13,10 @@ services:
       SPRING_CLOUD_CONFIG_SERVER_GIT_URI: https://github.com/santgodev/farmatodo-config-service
       SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT_LABEL: master
       SPRING_CLOUD_CONFIG_SERVER_GIT_CLONE_ON_START: "true"
-      # GitHub authentication - replace with your personal access token
-      SPRING_CLOUD_CONFIG_SERVER_GIT_USERNAME: ${GITHUB_USERNAME:-santgodev}
+      SPRING_CLOUD_CONFIG_SERVER_GIT_SKIP_SSL_VALIDATION: "true"
+      SPRING_CLOUD_CONFIG_SERVER_GIT_TIMEOUT: 30
+      # GitHub authentication - not needed for public repos
+      # SPRING_CLOUD_CONFIG_SERVER_GIT_USERNAME: ${GITHUB_USERNAME:-santgodev}
     ports:
       - "8888:8888"
     networks:

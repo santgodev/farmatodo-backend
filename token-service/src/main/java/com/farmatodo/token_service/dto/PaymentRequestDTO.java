@@ -16,4 +16,6 @@ public class PaymentRequestDTO {
     private BigDecimal amount;
     private Long orderId;
     private Long clientId;
+    private Double rejectionProbability; // Optional: Override default rejection probability (0.0 to 1.0)
+    private Integer maxAttempts; // Optional: Override default retry attempts (default: 3)
 }

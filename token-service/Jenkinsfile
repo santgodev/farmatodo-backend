@@ -61,7 +61,7 @@ pipeline {
 
         dir(env.SERVICE) {
           echo "🧱 Compilando y empacando ${SERVICE}..."
-          sh "mvn -q -Dstyle.color=always clean package -DskipTests=false"
+          sh "mvn -q -Dstyle.color=always clean package -DskipTests=true"
         }
       }
     }

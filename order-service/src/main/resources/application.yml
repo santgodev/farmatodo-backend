@@ -16,3 +16,24 @@ spring:
       # Set to true in production to retry connection to config-server
       retry:
         enabled: false
+
+  # Email configuration for order notifications
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: santgodev@gmail.com
+    password: okfe wdyq pzuh jaeo
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+# API Key for service authentication
+api:
+  key: order-service-secure-api-key-change-in-production

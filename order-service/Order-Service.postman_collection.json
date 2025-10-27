@@ -1,0 +1,138 @@
+{
+	"info": {
+		"_postman_id": "order-service-collection-id",
+		"name": "Order Service - Farmatodo",
+		"description": "Order and Payment Management Service with Email Notifications and API Key Security",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "apikey",
+		"apikey": [
+			{
+				"key": "value",
+				"value": "{{apiKey}}",
+				"type": "string"
+			},
+			{
+				"key": "key",
+				"value": "Authorization",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8085/orders/ping",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8085",
+					"path": [
+						"orders",
+						"ping"
+					]
+				},
+				"description": "Health check endpoint that returns 'pong'. No authentication required."
+			},
+			"response": []
+		},
+		{
+			"name": "Create Order with Email",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "ApiKey {{apiKey}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"clientId\": 1,\n    \"token\": \"tok_1234567890abcdef\",\n    \"email\": \"customer@example.com\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8085/orders",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8085",
+					"path": [
+						"orders"
+					]
+				},
+				"description": "Creates a new order from the user's cart and processes payment. Sends email notification after payment processing.\n\nREQUIRES API KEY AUTHENTICATION\n\nRequired headers:\n- Authorization: ApiKey <api-key>\n\nRequired fields:\n- clientId: ID of the client\n- token: Payment token from token-service\n- email: Email address to receive order confirmation or payment failure notification\n\nThe service will:\n1. Fetch the client's cart\n2. Create order with PENDING status\n3. Process payment with retry logic\n4. Send email notification (success or failure)\n5. Clear cart if payment is approved"
+			},
+			"response": []
+		},
+		{
+			"name": "Get Order by ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "ApiKey {{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8085/orders/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8085",
+					"path": [
+						"orders",
+						"1"
+					]
+				},
+				"description": "Retrieves order details including payment status and transaction information.\n\nREQUIRES API KEY AUTHENTICATION\n\nRequired headers:\n- Authorization: ApiKey <api-key>"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8085",
+			"type": "string"
+		},
+		{
+			"key": "clientId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "tok_1234567890abcdef",
+			"type": "string"
+		},
+		{
+			"key": "email",
+			"value": "customer@example.com",
+			"type": "string"
+		},
+		{
+			"key": "apiKey",
+			"value": "order-service-secure-api-key-change-in-production",
+			"type": "string"
+		}
+	]
+}

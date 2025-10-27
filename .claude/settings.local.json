@@ -36,7 +36,13 @@
       "Bash(git push:*)",
       "Bash(mvnw.cmd test:*)",
       "Bash(.mvnw.cmd test:*)",
-      "Bash(timeout 30 bash:*)"
+      "Bash(timeout 30 bash:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(docker-compose restart:*)",
+      "Bash(timeout 40 bash:*)",
+      "Bash(docker logs:*)",
+      "Bash(timeout 20 bash:*)",
+      "Bash(timeout 60 bash:*)"
     ],
     "deny": [],
     "ask": []

@@ -25,7 +25,7 @@ public class PaymentService {
     private final EmailService emailService;
 
     @Value("${payment.rejectionProbability:0.3}")
-    private double rejectionProbability;
+    private double defaultRejectionProbability;
 
     @Value("${payment.retryCount:3}")
     private int maxRetryCount;
@@ -37,8 +37,42 @@ public class PaymentService {
         String transactionId = MDC.get("transactionId");
         logger.info("Starting payment processing for orderId: {}, transactionId: {}", request.getOrderId(), transactionId);
 
+        // Determine which rejection probability to use
+        double rejectionProbability = request.getRejectionProbability() != null
+                ? request.getRejectionProbability()
+                : defaultRejectionProbability;
+
+        // Determine which retry count to use
+        int retryCount = request.getMaxAttempts() != null
+                ? request.getMaxAttempts()
+                : maxRetryCount;
+
+        // Validate rejection probability range
+        if (rejectionProbability < 0.0 || rejectionProbability > 1.0) {
+            logger.warn("Invalid rejection probability: {} for transaction: {}", rejectionProbability, transactionId);
+            throw new BusinessException(
+                    "Rejection probability must be between 0.0 and 1.0",
+                    "INVALID_REJECTION_PROBABILITY",
+                    400
+            );
+        }
+
+        // Validate retry count
+        if (retryCount < 1 || retryCount > 10) {
+            logger.warn("Invalid retry count: {} for transaction: {}", retryCount, transactionId);
+            throw new BusinessException(
+                    "Retry count must be between 1 and 10",
+                    "INVALID_RETRY_COUNT",
+                    400
+            );
+        }
+
+        logger.info("Using rejection probability: {} and retry count: {} for orderId: {}, transactionId: {}",
+                rejectionProbability, retryCount, request.getOrderId(), transactionId);
+
         logService.logInfo("Payment process started",
-                String.format("OrderId: %d, Token: %s, Amount: %s", request.getOrderId(), request.getToken(), request.getAmount()));
+                String.format("OrderId: %d, Token: %s, Amount: %s, RejectionProb: %.2f, MaxAttempts: %d",
+                        request.getOrderId(), request.getToken(), request.getAmount(), rejectionProbability, retryCount));
 
         // Validate token exists
         TokenizedCard tokenizedCard = tokenRepository.findByToken(request.getToken())
@@ -61,22 +95,22 @@ public class PaymentService {
         boolean approved = false;
         String message = "";
 
-        while (attempts < maxRetryCount && !approved) {
+        while (attempts < retryCount && !approved) {
             attempts++;
-            logger.info("Payment attempt {} of {} for orderId: {}", attempts, maxRetryCount, request.getOrderId());
+            logger.info("Payment attempt {} of {} for orderId: {}", attempts, retryCount, request.getOrderId());
 
             logService.logInfo("Payment attempt " + attempts,
-                    String.format("OrderId: %d, MaxRetries: %d", request.getOrderId(), maxRetryCount));
+                    String.format("OrderId: %d, MaxRetries: %d", request.getOrderId(), retryCount));
 
             // Simulate payment processing
-            if (shouldRejectPayment()) {
+            if (shouldRejectPayment(rejectionProbability)) {
                 message = String.format("Payment rejected on attempt %d", attempts);
                 logger.warn("Payment rejected for orderId: {} on attempt {}", request.getOrderId(), attempts);
 
                 logService.logWarn("Payment attempt rejected",
-                        String.format("OrderId: %d, Attempt: %d/%d", request.getOrderId(), attempts, maxRetryCount));
+                        String.format("OrderId: %d, Attempt: %d/%d", request.getOrderId(), attempts, retryCount));
 
-                if (attempts < maxRetryCount) {
+                if (attempts < retryCount) {
                     // Wait a bit before retry (in production, use exponential backoff)
                     try {
                         Thread.sleep(500);
@@ -90,7 +124,7 @@ public class PaymentService {
                 logger.info("Payment approved for orderId: {} on attempt {}", request.getOrderId(), attempts);
 
                 logService.logInfo("Payment approved",
-                        String.format("OrderId: %d, Attempt: %d/%d", request.getOrderId(), attempts, maxRetryCount));
+                        String.format("OrderId: %d, Attempt: %d/%d", request.getOrderId(), attempts, retryCount));
             }
         }
 
@@ -114,15 +148,15 @@ public class PaymentService {
     }
 
     /**
-     * Determines if the payment should be rejected based on configured probability
+     * Determines if the payment should be rejected based on provided probability
      */
-    private boolean shouldRejectPayment() {
-        if (rejectionProbability <= 0.0) {
+    private boolean shouldRejectPayment(double probability) {
+        if (probability <= 0.0) {
             return false;
         }
-        if (rejectionProbability >= 1.0) {
+        if (probability >= 1.0) {
             return true;
         }
-        return Math.random() < rejectionProbability;
+        return Math.random() < probability;
     }
 }

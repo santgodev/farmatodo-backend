@@ -31,6 +31,7 @@ public class OrderService {
     private final TokenServiceClient tokenServiceClient;
     private final CartServiceClient cartServiceClient;
     private final LogService logService;
+    private final EmailService emailService;
 
     @Transactional
     public OrderResponseDTO createOrder(CreateOrderRequestDTO request) {
@@ -81,10 +82,12 @@ public class OrderService {
         }
 
         // Step 3: Create order in PENDING state
-        logger.info("Creating order entity");
+        logger.info("Creating order entity" + (request.getOrderId() != null ? " with custom ID: " + request.getOrderId() : ""));
         Order order = Order.builder()
+                .id(request.getOrderId()) // Will use provided ID if present, otherwise auto-generated
                 .clientId(request.getClientId())
                 .token(request.getToken())
+                .email(request.getEmail())
                 .status("PENDING")
                 .transactionId(transactionId)
                 .paymentAttempts(0)
@@ -118,6 +121,8 @@ public class OrderService {
                 .amount(order.getTotalAmount())
                 .orderId(order.getId())
                 .clientId(request.getClientId())
+                .rejectionProbability(request.getRejectionProbability())
+                .maxAttempts(request.getMaxAttempts())
                 .build();
 
         PaymentResponseDTO paymentResponse;
@@ -134,6 +139,18 @@ public class OrderService {
 
                 logService.logInfo("Payment approved",
                         String.format("OrderId: %d, Attempts: %d", order.getId(), paymentResponse.getAttempts()));
+
+                // Send confirmation email
+                if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+                    emailService.sendOrderConfirmationEmail(
+                            request.getEmail(),
+                            order.getId(),
+                            client.getName(),
+                            order.getTotalAmount(),
+                            "APPROVED"
+                    );
+                    logger.info("Confirmation email sent to: {}", request.getEmail());
+                }
 
                 // Clear cart after successful payment
                 try {
@@ -157,6 +174,18 @@ public class OrderService {
                 logService.logWarn("Payment rejected",
                         String.format("OrderId: %d, Attempts: %d, Reason: %s",
                                 order.getId(), paymentResponse.getAttempts(), paymentResponse.getMessage()));
+
+                // Send failure email
+                if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+                    emailService.sendPaymentFailureEmail(
+                            request.getEmail(),
+                            order.getId(),
+                            client.getName(),
+                            order.getTotalAmount(),
+                            paymentResponse.getAttempts()
+                    );
+                    logger.info("Payment failure email sent to: {}", request.getEmail());
+                }
             }
         } catch (Exception e) {
             order.setStatus("REJECTED");
