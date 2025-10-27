@@ -13,7 +13,6 @@ pipeline {
         IMAGE_TAG = "${BUILD_NUMBER}"
         IMAGE = "${IMAGE_BASE}:${IMAGE_TAG}"
 
-
         // ⚙️ Configuración de red y puertos locales
         PORT = '8888'
         HOST = '8889'
@@ -25,7 +24,7 @@ pipeline {
         // ☁️ Configuración GCP / Artifact Registry
         GCP_PROJECT_ID = 'planar-momentum-469121-n0'
         REGION = 'us-central1'
-        REPOSITORY = 'java-app-repo'
+        REPOSITORY = "${SERVICE}-repo" // cada microservicio tiene su propio repo
         FULL_IMAGE_NAME = "us-docker.pkg.dev/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
     }
 
@@ -118,46 +117,50 @@ pipeline {
         // 6️⃣ AUTENTICACIÓN Y PUSH A ARTIFACT REGISTRY
         stage('Authenticate with GCP, Tag & Push to Artifact Registry') {
             steps {
-		echo 'Authenticate with GCP, tag and Push Image to Artifact Registry'
-		withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
-    			withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-				sh '''
-					echo Activating GCP service account...
-                    			gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-                    			gcloud config set project $GCP_PROJECT_ID
-		       
-                    			echo Configuring Docker to use gcloud credentials...
-                    			gcloud auth configure-docker us-docker.pkg.dev --quiet
-    				'''
-				script {
-					sh '''
-						gcloud artifacts repositories create java-app-repo-${IMAGE_TAG} --repository-format=docker --location=us --description="Docker repository" --project=$GCP_PROJECT_ID
-     					'''
-					sh "docker tag ${IMAGE} ${FULL_IMAGE_NAME}"
-					sh "docker push ${FULL_IMAGE_NAME}"
-					echo "Image pushed to: ${FULL_IMAGE_NAME}"
-				}
-			}
-		}
+                echo 'Authenticate with GCP, tag and Push Image to Artifact Registry'
+                withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
+                    withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
+                        sh '''
+                            echo Activating GCP service account...
+                            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                            gcloud config set project $GCP_PROJECT_ID
+                            echo Configuring Docker to use gcloud credentials...
+                            gcloud auth configure-docker us-docker.pkg.dev --quiet
+                        '''
+                        script {
+                            sh '''
+                                gcloud artifacts repositories create ${REPOSITORY} \
+                                    --repository-format=docker \
+                                    --location=$REGION \
+                                    --description="Docker repo for ${SERVICE}" \
+                                    --project=$GCP_PROJECT_ID || true
+                            '''
+                            sh "docker tag ${IMAGE} ${FULL_IMAGE_NAME}"
+                            sh "docker push ${FULL_IMAGE_NAME}"
+                            echo "✅ Image pushed to: ${FULL_IMAGE_NAME}"
+                        }
+                    }
+                }
             }
         }
 
-        // 7️⃣ DEPLOY LOCAL (solo pruebas o entorno dev)
-        stage('Deploy') {
+        // 7️⃣ DEPLOY EN CLOUD RUN 🚀
+        stage('Deploy to Cloud Run') {
             steps {
-                script {
-                    echo "🚀 Desplegando ${SERVICE} localmente..."
-                    sh """
-                        docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
-                        docker rm -f ${SERVICE} >/dev/null 2>&1 || true
-                        docker run -d --name ${SERVICE} \
-                            -p ${HOST}:${PORT} \
-                            --network ${NET} \
-                            ${IMAGE}
-                    """
-                    echo "✅ ${SERVICE} desplegado correctamente!"
-                    sh "docker ps --filter name=${SERVICE}"
+                echo "🚀 Desplegando ${SERVICE} en Cloud Run..."
+                withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
+                    withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
+                        sh '''
+                            gcloud run deploy ${SERVICE} \
+                                --image=${FULL_IMAGE_NAME} \
+                                --platform=managed \
+                                --region=${REGION} \
+                                --allow-unauthenticated \
+                                --project=$GCP_PROJECT_ID
+                        '''
+                    }
                 }
+                echo "✅ Despliegue en Cloud Run completado para ${SERVICE}!"
             }
         }
     }
