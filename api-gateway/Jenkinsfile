@@ -7,10 +7,10 @@ pipeline {
     }
 
     environment {
-        SERVICE = 'token-service'
+        SERVICE = 'api-gateway'
         IMAGE   = "farmatodo/${SERVICE}:latest"
-        PORT    = '8082'
-        HOST    = '8082'
+        PORT    = '8080'
+        HOST    = '8080'
         NET     = 'farmatodo-network'
         SONAR_SCANNER_HOME = tool 'sonar7' // 🔸 Asegúrate que el nombre del scanner coincida con tu configuración global
     }
@@ -22,27 +22,21 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('Checkout & Build') {
             steps {
-                echo "📦 Checking out source code..."
-                checkout scm
-            }
-        }
+                echo "📦 Clonando repositorio desde GitHub..."
+                checkout scmGit(
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        credentialsId: 'jenkins-gcp',
+                        url: 'https://github.com/santgodev/farmatodo-backend.git'
+                    ]]
+                )
 
-        stage('Build & Package') {
-            steps {
                 dir(SERVICE) {
-                    echo "🧱 Building ${SERVICE}..."
-                    // Saltamos los tests por ahora para evitar dependencias externas
-                    sh 'mvn clean package -DskipTests'
-                }
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                dir(SERVICE) {
-                    echo "🐳 Building Docker image for ${SERVICE}..."
+                    echo "🧱 Compilando y empacando ${SERVICE}..."
+                    sh 'mvn clean package -DskipTests=false'
                     sh "docker build -t ${IMAGE} ."
                 }
             }
@@ -71,17 +65,17 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    echo "🚀 Deploying ${SERVICE}..."
+                    echo "🚀 Desplegando ${SERVICE}..."
 
-                    // Aseguramos que la red Docker exista
+                    // Crear red Docker si no existe
                     sh """
                         docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
                     """
 
-                    // Eliminamos contenedor previo (si existe)
+                    // Eliminar contenedor previo si existe
                     sh "docker rm -f ${SERVICE} >/dev/null 2>&1 || true"
 
-                    // Desplegamos el nuevo contenedor
+                    // Desplegar contenedor actualizado
                     sh """
                         docker run -d --name ${SERVICE} \
                             -p ${HOST}:${PORT} \
@@ -89,7 +83,7 @@ pipeline {
                             ${IMAGE}
                     """
 
-                    echo "✅ ${SERVICE} deployed successfully!"
+                    echo "✅ ${SERVICE} desplegado correctamente!"
                     sh "docker ps --filter name=${SERVICE}"
                 }
             }
@@ -98,10 +92,10 @@ pipeline {
 
     post {
         success {
-            echo "🎉 Build and deploy completed successfully for ${SERVICE}!"
+            echo "✅ Build, análisis y despliegue completados con éxito para ${SERVICE}!"
         }
         failure {
-            echo "❌ Build or deployment failed for ${SERVICE}!"
+            echo "❌ Falló el pipeline de ${SERVICE}!"
         }
         always {
             echo "=========================================="
