@@ -17,12 +17,12 @@ pipeline {
 
     options {
         timestamps()
-        timeout(time: 20, unit: 'MINUTES')
+        timeout(time: 25, unit: 'MINUTES')
     }
 
     stages {
 
-        // 1️⃣ CHECKOUT Y COMPILACIÓN (sin crear imagen todavía)
+        // 1️⃣ CHECKOUT Y COMPILACIÓN
         stage('Checkout & Build') {
             steps {
                 echo "📦 Clonando repositorio desde GitHub..."
@@ -42,7 +42,7 @@ pipeline {
             }
         }
 
-        // 2️⃣ ANÁLISIS ESTÁTICO DEL CÓDIGO (SAST)
+        // 2️⃣ ANÁLISIS DE CÓDIGO (SonarQube)
         stage('SonarQube Analysis') {
             steps {
                 echo "🔍 Ejecutando análisis de código con SonarQube..."
@@ -63,22 +63,21 @@ pipeline {
             }
         }
 
-        // 3️⃣ ANÁLISIS DE ARCHIVOS Y DEPENDENCIAS (TRIVY FS)
+        // 3️⃣ ANÁLISIS DE DEPENDENCIAS Y ARCHIVOS (Trivy FS)
         stage('Trivy Source Scan') {
             steps {
-                echo "🧩 Escaneando el sistema de archivos del proyecto con Trivy (antes del build Docker)..."
+                echo "🧩 Escaneando dependencias y archivos con Trivy..."
                 dir(SERVICE) {
                     sh """
-                        trivy fs . \
-                            --format table \
-                            --severity HIGH,CRITICAL \
-                            -o trivy-fs-report.txt || true
+                        echo '📄 Resultados del análisis del sistema de archivos (Trivy FS):'
+                        trivy fs . --format table --severity HIGH,CRITICAL || true
+                        trivy fs . --format template --template "@contrib/html.tpl" -o trivy-fs-report.html || true
                     """
                 }
             }
         }
 
-        // 4️⃣ CONSTRUCCIÓN DE IMAGEN DOCKER
+        // 4️⃣ BUILD DE IMAGEN DOCKER
         stage('Build Docker Image') {
             steps {
                 dir(SERVICE) {
@@ -88,15 +87,14 @@ pipeline {
             }
         }
 
-        // 5️⃣ ANÁLISIS DE IMAGEN DOCKER (TRIVY IMAGE)
+        // 5️⃣ ANÁLISIS DE IMAGEN DOCKER (Trivy Image)
         stage('Trivy Image Scan') {
             steps {
                 echo "🔎 Escaneando imagen Docker con Trivy..."
                 sh """
-                    trivy image ${IMAGE} \
-                        --format table \
-                        --severity HIGH,CRITICAL \
-                        -o trivy-image-report.txt || true
+                    echo '🐳 Resultados del análisis de la imagen (${IMAGE}):'
+                    trivy image ${IMAGE} --format table --severity HIGH,CRITICAL || true
+                    trivy image ${IMAGE} --format template --template "@contrib/html.tpl" -o trivy-image-report.html || true
                 """
             }
         }
@@ -135,9 +133,9 @@ pipeline {
             echo "Duration: ${currentBuild.durationString}"
             echo "=========================================="
 
-            // Guarda artefactos de seguridad
+            // 📦 Archivar artefactos importantes
             archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
-            archiveArtifacts artifacts: "**/trivy-*.txt", allowEmptyArchive: true
+            archiveArtifacts artifacts: "**/trivy-*.html", allowEmptyArchive: true
         }
     }
 }
