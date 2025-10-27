@@ -13,9 +13,9 @@ pipeline {
     IMAGE_TAG    = "${BUILD_NUMBER}"
     IMAGE        = "${IMAGE_BASE}:${IMAGE_TAG}"
 
-    // ===== Red local (solo para dev local si lo usas) =====
-    PORT         = '8888'
-    HOST         = '8889'
+    // ===== Red local =====
+    PORT         = '8888'     // puerto interno del contenedor
+    HOST         = '8889'     // puerto expuesto en el host
     NET          = 'farmatodo-network'
 
     // ===== SonarQube =====
@@ -23,7 +23,7 @@ pipeline {
 
     // ===== GCP / Artifact Registry / Cloud Run =====
     GCP_PROJECT_ID = 'planar-momentum-469121-n0'
-    REGION         = 'us-central1'                 
+    REGION         = 'us-central1'
     REPOSITORY     = "${SERVICE}-repo"
     AR_HOST        = "${REGION}-docker.pkg.dev"
     FULL_IMAGE_NAME = "${AR_HOST}/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
@@ -66,7 +66,7 @@ pipeline {
       }
     }
 
-    // 2) SonarQube (SAST)
+    // 2) SonarQube
     stage('SonarQube Analysis') {
       steps {
         echo "🔍 Ejecutando análisis de código con SonarQube..."
@@ -87,10 +87,10 @@ pipeline {
       }
     }
 
-    // 3) Trivy FS (antes del build Docker)
+    // 3) Trivy Source Scan
     stage('Trivy Source Scan') {
       steps {
-        echo "🧩 Escaneando dependencias y archivos con Trivy..."
+        echo "🧩 Escaneando dependencias con Trivy..."
         dir(env.SERVICE) {
           sh """
             trivy fs . \
@@ -102,22 +102,46 @@ pipeline {
       }
     }
 
-    // 4) Docker build
+    // 4) Docker Build
     stage('Build Docker Image') {
       steps {
         dir(env.SERVICE) {
-          echo "🐳 Construyendo imagen Docker para ${SERVICE}..."
+          echo "🐳 Construyendo imagen Docker..."
           sh "docker build -t ${IMAGE} ."
         }
       }
     }
 
-    // 5) Trivy image
+    // 5) Ejecutar localmente en Docker
+    stage('Run Local in Docker') {
+      steps {
+        echo "🧩 Iniciando ${SERVICE} en red local (${NET}) para pruebas internas..."
+        sh """
+          # Crear red si no existe
+          docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
+
+          # Detener y eliminar contenedor previo si existe
+          docker rm -f ${SERVICE} >/dev/null 2>&1 || true
+
+          # Ejecutar contenedor en red local
+          docker run -d \
+            --name ${SERVICE} \
+            --network ${NET} \
+            -p ${HOST}:${PORT} \
+            -e SPRING_PROFILES_ACTIVE=dev \
+            -e SERVER_PORT=${PORT} \
+            ${IMAGE}
+
+          echo "✅ ${SERVICE} levantado localmente en http://localhost:${HOST}"
+        """
+      }
+    }
+
+    // 6) Trivy Image Scan
     stage('Trivy Image Scan') {
       steps {
-        echo "🔎 Escaneando imagen Docker con Trivy..."
+        echo "🔎 Escaneando imagen Docker..."
         sh """
-          echo "📋 Resultados del análisis de ${IMAGE}"
           trivy image ${IMAGE} \
             --format table \
             --severity HIGH,CRITICAL \
@@ -126,21 +150,17 @@ pipeline {
       }
     }
 
-    // 6) Push a Artifact Registry (corregido)
+    // 7) Push to Artifact Registry
     stage('Push to Artifact Registry') {
       steps {
-        echo "☁️ Autenticando en GCP y empujando imagen a Artifact Registry..."
+        echo "☁️ Autenticando en GCP y empujando imagen..."
         withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
           withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
             sh """
-              echo "🔐 Activando cuenta de servicio..."
               gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
               gcloud config set project "$GCP_PROJECT_ID"
-
-              echo "🧭 Configurando credenciales Docker para Artifact Registry (${AR_HOST})..."
               gcloud auth configure-docker "$AR_HOST" --quiet
 
-              echo "🏷️ Creando repositorio (idempotente) si no existe..."
               if ! gcloud artifacts repositories describe "$REPOSITORY" --location="$REGION" --project="$GCP_PROJECT_ID" >/dev/null 2>&1 ; then
                 gcloud artifacts repositories create "$REPOSITORY" \
                   --repository-format=docker \
@@ -149,10 +169,7 @@ pipeline {
                   --project="$GCP_PROJECT_ID"
               fi
 
-              echo "🏷️ Etiquetando imagen local -> ${FULL_IMAGE_NAME}"
               docker tag "$IMAGE" "$FULL_IMAGE_NAME"
-
-              echo "📤 Pushing ${FULL_IMAGE_NAME}..."
               docker push "$FULL_IMAGE_NAME"
             """
           }
@@ -160,18 +177,16 @@ pipeline {
       }
     }
 
-    // 7) Deploy a Cloud Run (corregido)
+    // 8) Deploy to Cloud Run
     stage('Deploy to Cloud Run') {
       steps {
         echo "🚀 Desplegando ${SERVICE} en Cloud Run..."
         withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
           withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
             sh """
-              echo "🔐 Activando cuenta de servicio..."
               gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
               gcloud config set project "$GCP_PROJECT_ID"
 
-              echo "🚀 gcloud run deploy ${CR_SERVICE}"
               gcloud run deploy "$CR_SERVICE" \
                 --image="$FULL_IMAGE_NAME" \
                 --region="$REGION" \
@@ -193,7 +208,7 @@ pipeline {
 
   post {
     success {
-      echo "✅ Build, análisis y despliegue completados con éxito para ${SERVICE}!"
+      echo "✅ Build, análisis, despliegue local y despliegue en GCP completados con éxito para ${SERVICE}!"
     }
     failure {
       echo "❌ Falló el pipeline de ${SERVICE}!"
