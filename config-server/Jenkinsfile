@@ -14,8 +14,14 @@ pipeline {
         NET     = 'farmatodo-network'
     }
 
+    options {
+        timestamps()
+        timeout(time: 20, unit: 'MINUTES')
+    }
+
     stages {
-        stage('Build') {
+
+        stage('Checkout & Build') {
             steps {
                 echo "📦 Clonando repositorio desde GitHub..."
                 checkout scmGit(
@@ -28,33 +34,75 @@ pipeline {
                 )
 
                 dir(SERVICE) {
-                    echo "🧱 Building and packaging ${SERVICE}..."
+                    echo "🧱 Compilando y empacando ${SERVICE}..."
                     sh 'mvn clean package -DskipTests=false'
                     sh "docker build -t ${IMAGE} ."
                 }
             }
         }
 
+        stage('SonarQube Analysis') {
+            steps {
+                echo "🔍 Ejecutando análisis de código con SonarQube..."
+                dir(SERVICE) {
+                    withCredentials([string(credentialsId: 'sonartoken', variable: 'SONAR_TOKEN')]) {
+                        withSonarQubeEnv('sonar') {
+                            sh """
+                                sonar-scanner \
+                                    -Dsonar.projectKey=jenkinsgcp \
+                                    -Dsonar.sources=. \
+                                    -Dsonar.host.url=http://localhost:9000 \
+                                    -Dsonar.java.binaries=target/classes \
+                                    -Dsonar.token=$SONAR_TOKEN
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Deploy') {
             steps {
-                echo "🚀 Deploying ${SERVICE}..."
-                sh """
-                    docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
-                    docker rm -f ${SERVICE} >/dev/null 2>&1 || true
-                    docker run -d --name ${SERVICE} -p ${HOST}:${PORT} --network ${NET} ${IMAGE}
-                """
-                echo "✅ ${SERVICE} deployed successfully!"
-                sh "docker ps --filter name=${SERVICE}"
+                script {
+                    echo "🚀 Desplegando ${SERVICE}..."
+
+                    // Crear red Docker si no existe
+                    sh """
+                        docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
+                    """
+
+                    // Eliminar contenedor previo si existe
+                    sh "docker rm -f ${SERVICE} >/dev/null 2>&1 || true"
+
+                    // Desplegar contenedor actualizado
+                    sh """
+                        docker run -d --name ${SERVICE} \
+                            -p ${HOST}:${PORT} \
+                            --network ${NET} \
+                            ${IMAGE}
+                    """
+
+                    echo "✅ ${SERVICE} desplegado correctamente!"
+                    sh "docker ps --filter name=${SERVICE}"
+                }
             }
         }
     }
 
     post {
         success {
-            echo "✅ Build and deploy completed successfully!"
+            echo "✅ Build, análisis y despliegue completados con éxito para ${SERVICE}!"
         }
         failure {
-            echo "❌ Pipeline failed!"
+            echo "❌ Falló el pipeline de ${SERVICE}!"
+        }
+        always {
+            echo "=========================================="
+            echo "Service: ${SERVICE}"
+            echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
+            echo "Duration: ${currentBuild.durationString}"
+            echo "=========================================="
+            archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
         }
     }
 }
