@@ -7,10 +7,10 @@ pipeline {
     }
 
     environment {
-        SERVICE = 'client-service'
+        SERVICE = 'product-service'
         IMAGE   = "farmatodo/${SERVICE}:latest"
-        PORT    = '8081'
-        HOST    = '8081'
+        PORT    = '8083'
+        HOST    = '8083'
         NET     = 'farmatodo-network'
     }
 
@@ -68,26 +68,3 @@ pipeline {
                     """
 
                     echo "✅ ${SERVICE} deployed successfully!"
-                    sh "docker ps --filter name=${SERVICE}"
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "🎉 Build and deploy completed successfully for ${SERVICE}!"
-        }
-        failure {
-            echo "❌ Build or deployment failed for ${SERVICE}!"
-        }
-        always {
-            echo "=========================================="
-            echo "Service: ${SERVICE}"
-            echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
-            echo "Duration: ${currentBuild.durationString}"
-            echo "=========================================="
-            archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
-        }
-    }
-}
