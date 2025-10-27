@@ -23,12 +23,11 @@ pipeline {
 
     // ===== GCP / Artifact Registry / Cloud Run =====
     GCP_PROJECT_ID = 'planar-momentum-469121-n0'
-    REGION         = 'us-central1'                 // Debe existir Cloud Run y AR en la misma región
-    REPOSITORY     = "${SERVICE}-repo"             // Repo por microservicio
-    // Host de Artifact Registry por región (clave para evitar 403/404)
+    REGION         = 'us-central1'                 
+    REPOSITORY     = "${SERVICE}-repo"
     AR_HOST        = "${REGION}-docker.pkg.dev"
     FULL_IMAGE_NAME = "${AR_HOST}/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
-    // Ajustes Cloud Run
+
     CR_SERVICE     = "${SERVICE}"
     CR_PLATFORM    = "managed"
     CR_CPU         = "1"
@@ -62,7 +61,7 @@ pipeline {
 
         dir(env.SERVICE) {
           echo "🧱 Compilando y empacando ${SERVICE}..."
-          sh 'mvn -q -Dstyle.color=always clean package -DskipTests=false'
+          sh "mvn -q -Dstyle.color=always clean package -DskipTests=false"
         }
       }
     }
@@ -127,16 +126,16 @@ pipeline {
       }
     }
 
-    // 6) Push a Artifact Registry (host correcto por región) + Deploy Cloud Run
+    // 6) Push a Artifact Registry (corregido)
     stage('Push to Artifact Registry') {
       steps {
         echo "☁️ Autenticando en GCP y empujando imagen a Artifact Registry..."
         withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
           withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-            sh '''
+            sh """
               echo "🔐 Activando cuenta de servicio..."
               gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-              gcloud config set project '"$GCP_PROJECT_ID"'
+              gcloud config set project "$GCP_PROJECT_ID"
 
               echo "🧭 Configurando credenciales Docker para Artifact Registry (${AR_HOST})..."
               gcloud auth configure-docker "$AR_HOST" --quiet
@@ -151,40 +150,41 @@ pipeline {
               fi
 
               echo "🏷️ Etiquetando imagen local -> ${FULL_IMAGE_NAME}"
-              docker tag '"$IMAGE"' '"$FULL_IMAGE_NAME"'
+              docker tag "$IMAGE" "$FULL_IMAGE_NAME"
 
               echo "📤 Pushing ${FULL_IMAGE_NAME}..."
-              docker push '"$FULL_IMAGE_NAME"'
-            '''
+              docker push "$FULL_IMAGE_NAME"
+            """
           }
         }
       }
     }
 
+    // 7) Deploy a Cloud Run (corregido)
     stage('Deploy to Cloud Run') {
       steps {
         echo "🚀 Desplegando ${SERVICE} en Cloud Run..."
         withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
           withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-            sh '''
+            sh """
               echo "🔐 Activando cuenta de servicio..."
               gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-              gcloud config set project '"$GCP_PROJECT_ID"'
+              gcloud config set project "$GCP_PROJECT_ID"
 
               echo "🚀 gcloud run deploy ${CR_SERVICE}"
-              gcloud run deploy '"$CR_SERVICE"' \
-                --image='"$FULL_IMAGE_NAME"' \
-                --region='"$REGION"' \
-                --platform='"$CR_PLATFORM"' \
-                --port='"$CR_PORT"' \
-                --memory='"$CR_MEMORY"' \
-                --cpu='"$CR_CPU"' \
-                --concurrency='"$CR_CONCURRENCY"' \
-                --min-instances='"$CR_MIN_INST"' \
-                --max-instances='"$CR_MAX_INST"' \
-                --allow-unauthenticated='"$CR_ALLOW_UNAUTH"' \
+              gcloud run deploy "$CR_SERVICE" \
+                --image="$FULL_IMAGE_NAME" \
+                --region="$REGION" \
+                --platform="$CR_PLATFORM" \
+                --port="$CR_PORT" \
+                --memory="$CR_MEMORY" \
+                --cpu="$CR_CPU" \
+                --concurrency="$CR_CONCURRENCY" \
+                --min-instances="$CR_MIN_INST" \
+                --max-instances="$CR_MAX_INST" \
+                --allow-unauthenticated \
                 --quiet
-            '''
+            """
           }
         }
       }
