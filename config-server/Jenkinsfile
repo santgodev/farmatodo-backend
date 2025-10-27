@@ -1,187 +1,211 @@
 pipeline {
-    agent any
+  agent any
 
-    tools {
-        jdk 'java17016'
-        maven 'maven399'
+  tools {
+    jdk 'java17016'
+    maven 'maven399'
+  }
+
+  environment {
+    // ===== Servicio / Imagen local =====
+    SERVICE      = 'config-server'
+    IMAGE_BASE   = "farmatodo/${SERVICE}"
+    IMAGE_TAG    = "${BUILD_NUMBER}"
+    IMAGE        = "${IMAGE_BASE}:${IMAGE_TAG}"
+
+    // ===== Red local (solo para dev local si lo usas) =====
+    PORT         = '8888'
+    HOST         = '8889'
+    NET          = 'farmatodo-network'
+
+    // ===== SonarQube =====
+    SONAR_SCANNER_HOME = tool 'sonar7'
+
+    // ===== GCP / Artifact Registry / Cloud Run =====
+    GCP_PROJECT_ID = 'planar-momentum-469121-n0'
+    REGION         = 'us-central1'                 // Debe existir Cloud Run y AR en la misma región
+    REPOSITORY     = "${SERVICE}-repo"             // Repo por microservicio
+    // Host de Artifact Registry por región (clave para evitar 403/404)
+    AR_HOST        = "${REGION}-docker.pkg.dev"
+    FULL_IMAGE_NAME = "${AR_HOST}/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
+    // Ajustes Cloud Run
+    CR_SERVICE     = "${SERVICE}"
+    CR_PLATFORM    = "managed"
+    CR_CPU         = "1"
+    CR_MEMORY      = "512Mi"
+    CR_CONCURRENCY = "80"
+    CR_MIN_INST    = "0"
+    CR_MAX_INST    = "2"
+    CR_PORT        = "${PORT}"
+    CR_ALLOW_UNAUTH = "true"
+  }
+
+  options {
+    timestamps()
+    timeout(time: 20, unit: 'MINUTES')
+  }
+
+  stages {
+
+    // 1) Checkout & Build
+    stage('Checkout & Build') {
+      steps {
+        echo "📦 Clonando repositorio desde GitHub..."
+        checkout scmGit(
+          branches: [[name: '*/main']],
+          extensions: [],
+          userRemoteConfigs: [[
+            credentialsId: 'jenkins-gcp',
+            url: 'https://github.com/santgodev/farmatodo-backend.git'
+          ]]
+        )
+
+        dir(env.SERVICE) {
+          echo "🧱 Compilando y empacando ${SERVICE}..."
+          sh 'mvn -q -Dstyle.color=always clean package -DskipTests=false'
+        }
+      }
     }
 
-    environment {
-        // 🧩 Variables principales del servicio
-        SERVICE = 'config-server'
-        IMAGE_BASE = "farmatodo/${SERVICE}"
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        IMAGE = "${IMAGE_BASE}:${IMAGE_TAG}"
-
-        // ⚙️ Configuración de red y puertos locales
-        PORT = '8888'
-        HOST = '8889'
-        NET = 'farmatodo-network'
-
-        // 🔍 Herramientas y análisis
-        SONAR_SCANNER_HOME = tool 'sonar7'
-
-        // ☁️ Configuración GCP / Artifact Registry
-        GCP_PROJECT_ID = 'planar-momentum-469121-n0'
-        REGION = 'us-central1'
-        REPOSITORY = "${SERVICE}-repo" // cada microservicio tiene su propio repo
-        FULL_IMAGE_NAME = "us-docker.pkg.dev/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
+    // 2) SonarQube (SAST)
+    stage('SonarQube Analysis') {
+      steps {
+        echo "🔍 Ejecutando análisis de código con SonarQube..."
+        dir(env.SERVICE) {
+          withCredentials([string(credentialsId: 'sonartoken', variable: 'SONAR_TOKEN')]) {
+            withSonarQubeEnv('sonar') {
+              sh """
+                ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
+                  -Dsonar.projectKey=${SERVICE} \
+                  -Dsonar.sources=. \
+                  -Dsonar.host.url=http://sonarqube-dind:9000 \
+                  -Dsonar.java.binaries=target/classes \
+                  -Dsonar.token=$SONAR_TOKEN
+              """
+            }
+          }
+        }
+      }
     }
 
-    options {
-        timestamps()
-        timeout(time: 20, unit: 'MINUTES')
+    // 3) Trivy FS (antes del build Docker)
+    stage('Trivy Source Scan') {
+      steps {
+        echo "🧩 Escaneando dependencias y archivos con Trivy..."
+        dir(env.SERVICE) {
+          sh """
+            trivy fs . \
+              --format table \
+              --severity HIGH,CRITICAL \
+              -o trivy-fs-report.txt || true
+          """
+        }
+      }
     }
 
-    stages {
-
-        // 1️⃣ CHECKOUT Y BUILD (sin imagen aún)
-        stage('Checkout & Build') {
-            steps {
-                echo "📦 Clonando repositorio desde GitHub..."
-                checkout scmGit(
-                    branches: [[name: '*/main']],
-                    extensions: [],
-                    userRemoteConfigs: [[
-                        credentialsId: 'jenkins-gcp',
-                        url: 'https://github.com/santgodev/farmatodo-backend.git'
-                    ]]
-                )
-
-                dir(SERVICE) {
-                    echo "🧱 Compilando y empacando ${SERVICE}..."
-                    sh 'mvn clean package -DskipTests=false'
-                }
-            }
+    // 4) Docker build
+    stage('Build Docker Image') {
+      steps {
+        dir(env.SERVICE) {
+          echo "🐳 Construyendo imagen Docker para ${SERVICE}..."
+          sh "docker build -t ${IMAGE} ."
         }
-
-        // 2️⃣ ANÁLISIS ESTÁTICO (SAST)
-        stage('SonarQube Analysis') {
-            steps {
-                echo "🔍 Ejecutando análisis de código con SonarQube..."
-                dir(SERVICE) {
-                    withCredentials([string(credentialsId: 'sonartoken', variable: 'SONAR_TOKEN')]) {
-                        withSonarQubeEnv('sonar') {
-                            sh """
-                                ${SONAR_SCANNER_HOME}/bin/sonar-scanner \
-                                    -Dsonar.projectKey=${SERVICE} \
-                                    -Dsonar.sources=. \
-                                    -Dsonar.host.url=http://sonarqube-dind:9000 \
-                                    -Dsonar.java.binaries=target/classes \
-                                    -Dsonar.token=$SONAR_TOKEN
-                            """
-                        }
-                    }
-                }
-            }
-        }
-
-        // 3️⃣ ANÁLISIS DE DEPENDENCIAS Y FS (antes del build Docker)
-        stage('Trivy Source Scan') {
-            steps {
-                echo "🧩 Escaneando dependencias y archivos con Trivy..."
-                dir(SERVICE) {
-                    sh """
-                        trivy fs . \
-                            --format table \
-                            --severity HIGH,CRITICAL \
-                            -o trivy-fs-report.txt || true
-                    """
-                }
-            }
-        }
-
-        // 4️⃣ CONSTRUCCIÓN DE IMAGEN DOCKER
-        stage('Build Docker Image') {
-            steps {
-                dir(SERVICE) {
-                    echo "🐳 Construyendo imagen Docker para ${SERVICE}..."
-                    sh "docker build -t ${IMAGE} ."
-                }
-            }
-        }
-
-        // 5️⃣ ANÁLISIS DE IMAGEN DOCKER
-        stage('Trivy Image Scan') {
-            steps {
-                echo "🔎 Escaneando imagen Docker con Trivy..."
-                sh """
-                    trivy image ${IMAGE} \
-                        --format table \
-                        --severity HIGH,CRITICAL \
-                        -o trivy-image-report.txt || true
-                """
-            }
-        }
-
-        // 6️⃣ AUTENTICACIÓN Y PUSH A ARTIFACT REGISTRY
-        stage('Authenticate with GCP, Tag & Push to Artifact Registry') {
-            steps {
-                echo 'Authenticate with GCP, tag and Push Image to Artifact Registry'
-                withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
-                    withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-                        sh '''
-                            echo Activating GCP service account...
-                            gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-                            gcloud config set project $GCP_PROJECT_ID
-                            echo Configuring Docker to use gcloud credentials...
-                            gcloud auth configure-docker us-docker.pkg.dev --quiet
-                        '''
-                        script {
-                            sh '''
-                                gcloud artifacts repositories create ${REPOSITORY} \
-                                    --repository-format=docker \
-                                    --location=$REGION \
-                                    --description="Docker repo for ${SERVICE}" \
-                                    --project=$GCP_PROJECT_ID || true
-                            '''
-                            sh "docker tag ${IMAGE} ${FULL_IMAGE_NAME}"
-                            sh "docker push ${FULL_IMAGE_NAME}"
-                            echo "✅ Image pushed to: ${FULL_IMAGE_NAME}"
-                        }
-                    }
-                }
-            }
-        }
-
-        // 7️⃣ DEPLOY EN CLOUD RUN 🚀
-        stage('Deploy to Cloud Run') {
-            steps {
-                echo "🚀 Desplegando ${SERVICE} en Cloud Run..."
-                withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
-                    withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-                        sh '''
-                            gcloud run deploy ${SERVICE} \
-                                --image=${FULL_IMAGE_NAME} \
-                                --platform=managed \
-                                --region=${REGION} \
-                                --allow-unauthenticated \
-                                --project=$GCP_PROJECT_ID
-                        '''
-                    }
-                }
-                echo "✅ Despliegue en Cloud Run completado para ${SERVICE}!"
-            }
-        }
+      }
     }
 
-    // 🧾 Post-Actions
-    post {
-        success {
-            echo "✅ Build, análisis y despliegue completados con éxito para ${SERVICE}!"
-        }
-        failure {
-            echo "❌ Falló el pipeline de ${SERVICE}!"
-        }
-        always {
-            echo "=========================================="
-            echo "Service: ${SERVICE}"
-            echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
-            echo "Duration: ${currentBuild.durationString}"
-            echo "=========================================="
-
-            archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
-            archiveArtifacts artifacts: "**/trivy-*.txt", allowEmptyArchive: true
-        }
+    // 5) Trivy image
+    stage('Trivy Image Scan') {
+      steps {
+        echo "🔎 Escaneando imagen Docker con Trivy..."
+        sh """
+          echo "📋 Resultados del análisis de ${IMAGE}"
+          trivy image ${IMAGE} \
+            --format table \
+            --severity HIGH,CRITICAL \
+            -o trivy-image-report.txt || true
+        """
+      }
     }
+
+    // 6) Push a Artifact Registry (host correcto por región) + Deploy Cloud Run
+    stage('Push to Artifact Registry') {
+      steps {
+        echo "☁️ Autenticando en GCP y empujando imagen a Artifact Registry..."
+        withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
+          withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
+            sh '''
+              echo "🔐 Activando cuenta de servicio..."
+              gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+              gcloud config set project '"$GCP_PROJECT_ID"'
+
+              echo "🧭 Configurando credenciales Docker para Artifact Registry (${AR_HOST})..."
+              gcloud auth configure-docker "$AR_HOST" --quiet
+
+              echo "🏷️ Creando repositorio (idempotente) si no existe..."
+              if ! gcloud artifacts repositories describe "$REPOSITORY" --location="$REGION" --project="$GCP_PROJECT_ID" >/dev/null 2>&1 ; then
+                gcloud artifacts repositories create "$REPOSITORY" \
+                  --repository-format=docker \
+                  --location="$REGION" \
+                  --description="Docker repo for $SERVICE" \
+                  --project="$GCP_PROJECT_ID"
+              fi
+
+              echo "🏷️ Etiquetando imagen local -> ${FULL_IMAGE_NAME}"
+              docker tag '"$IMAGE"' '"$FULL_IMAGE_NAME"'
+
+              echo "📤 Pushing ${FULL_IMAGE_NAME}..."
+              docker push '"$FULL_IMAGE_NAME"'
+            '''
+          }
+        }
+      }
+    }
+
+    stage('Deploy to Cloud Run') {
+      steps {
+        echo "🚀 Desplegando ${SERVICE} en Cloud Run..."
+        withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
+          withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
+            sh '''
+              echo "🔐 Activando cuenta de servicio..."
+              gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+              gcloud config set project '"$GCP_PROJECT_ID"'
+
+              echo "🚀 gcloud run deploy ${CR_SERVICE}"
+              gcloud run deploy '"$CR_SERVICE"' \
+                --image='"$FULL_IMAGE_NAME"' \
+                --region='"$REGION"' \
+                --platform='"$CR_PLATFORM"' \
+                --port='"$CR_PORT"' \
+                --memory='"$CR_MEMORY"' \
+                --cpu='"$CR_CPU"' \
+                --concurrency='"$CR_CONCURRENCY"' \
+                --min-instances='"$CR_MIN_INST"' \
+                --max-instances='"$CR_MAX_INST"' \
+                --allow-unauthenticated='"$CR_ALLOW_UNAUTH"' \
+                --quiet
+            '''
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Build, análisis y despliegue completados con éxito para ${SERVICE}!"
+    }
+    failure {
+      echo "❌ Falló el pipeline de ${SERVICE}!"
+    }
+    always {
+      echo "=========================================="
+      echo "Service: ${SERVICE}"
+      echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
+      echo "Duration: ${currentBuild.durationString}"
+      echo "=========================================="
+      archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
+      archiveArtifacts artifacts: "**/trivy-*.txt", allowEmptyArchive: true
+    }
+  }
 }
