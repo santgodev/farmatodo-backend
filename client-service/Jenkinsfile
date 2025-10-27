@@ -7,100 +7,87 @@ pipeline {
     }
 
     environment {
-        // 🧾 Parámetros generales
         SERVICE = 'client-service'
-        IMAGE_NAME = "farmatodo/${SERVICE}"
-        REGISTRY_CREDENTIALS = 'dockerhub-credentials'  // ID de credencial en Jenkins
-        VERSION = "v${env.BUILD_NUMBER}"
-        NET = 'farmatodo-network'
+        IMAGE   = "farmatodo/${SERVICE}:latest"
+        PORT    = '8081'
+        HOST    = '8081'
+        NET     = 'farmatodo-network'
     }
 
     options {
         timestamps()
-        timeout(time: 25, unit: 'MINUTES')
+        timeout(time: 20, unit: 'MINUTES')
     }
 
     stages {
-        // ===============================
+
         stage('Checkout') {
             steps {
-                echo "📦 Clonando el repositorio..."
+                echo "📦 Checking out source code..."
                 checkout scm
             }
         }
-        // ===============================
-        stage('Build & Test') {
+
+        stage('Build & Package') {
             steps {
                 dir(SERVICE) {
-                    echo "🧱 Compilando y ejecutando tests de ${SERVICE}..."
+                    echo "🧱 Building ${SERVICE}..."
+                    // Saltamos los tests por ahora para evitar dependencias del config-server
                     sh 'mvn clean package -DskipTests'
                 }
             }
         }
-        // ===============================
-        stage('Build Docker Image') {
+
+        stage('Docker Build') {
             steps {
                 dir(SERVICE) {
-                    echo "🐳 Construyendo imagen Docker para ${SERVICE}..."
-                    sh """
-                        docker build -t ${IMAGE_NAME}:${VERSION} .
-                        docker tag ${IMAGE_NAME}:${VERSION} ${IMAGE_NAME}:latest
-                    """
+                    echo "🐳 Building Docker image for ${SERVICE}..."
+                    sh "docker build -t ${IMAGE} ."
                 }
             }
         }
-        // ===============================
-        stage('Push to Docker Hub') {
+
+        stage('Deploy') {
             steps {
                 script {
-                    echo "☁️ Subiendo imagen a Docker Hub..."
-                    withCredentials([usernamePassword(credentialsId: "${REGISTRY_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh """
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker push ${IMAGE_NAME}:${VERSION}
-                            docker push ${IMAGE_NAME}:latest
-                            docker logout
-                        """
-                    }
+                    echo "🚀 Deploying ${SERVICE}..."
+
+                    // Aseguramos que la red Docker exista
+                    sh """
+                        docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
+                    """
+
+                    // Eliminamos contenedor previo (si existe)
+                    sh "docker rm -f ${SERVICE} >/dev/null 2>&1 || true"
+
+                    // Desplegamos el nuevo contenedor
+                    sh """
+                        docker run -d --name ${SERVICE} \
+                            -p ${HOST}:${PORT} \
+                            --network ${NET} \
+                            ${IMAGE}
+                    """
+
+                    echo "✅ ${SERVICE} deployed successfully!"
+                    sh "docker ps --filter name=${SERVICE}"
                 }
-            }
-        }
-        // ===============================
-        stage('Post-Build Info') {
-            steps {
-                echo "✅ Imagen publicada:"
-                echo "   - ${IMAGE_NAME}:${VERSION}"
-                echo "   - ${IMAGE_NAME}:latest"
-            }
-        }
-        // ===============================
-        stage('Deploy (optional local/staging)') {
-            when {
-                expression { return params.DEPLOY_TO_LOCAL == true }
-            }
-            steps {
-                echo "🚀 Desplegando entorno local (docker-compose)..."
-                sh "docker compose -f docker-compose.yml up -d"
             }
         }
     }
 
     post {
         success {
-            echo "🎉 Build completado correctamente."
+            echo "🎉 Build and deploy completed successfully for ${SERVICE}!"
         }
         failure {
-            echo "❌ Error en el pipeline."
+            echo "❌ Build or deployment failed for ${SERVICE}!"
         }
         always {
-            echo """
-==========================================
-Service: ${SERVICE}
-Version: ${VERSION}
-Status: ${currentBuild.result ?: 'SUCCESS'}
-Duration: ${currentBuild.durationString}
-==========================================
-"""
+            echo "=========================================="
+            echo "Service: ${SERVICE}"
+            echo "Status: ${currentBuild.result ?: 'SUCCESS'}"
+            echo "Duration: ${currentBuild.durationString}"
+            echo "=========================================="
             archiveArtifacts artifacts: "${SERVICE}/target/*.jar", allowEmptyArchive: true, fingerprint: true
         }
     }
