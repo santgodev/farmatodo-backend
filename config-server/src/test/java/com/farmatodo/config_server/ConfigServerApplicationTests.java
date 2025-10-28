@@ -54,7 +54,7 @@ class ConfigServerApplicationTests {
 	@Test
 	void gitDefaultLabelIsConfigured() {
 		String defaultLabel = applicationContext.getEnvironment().getProperty("spring.cloud.config.server.git.default-label");
-		assertThat(defaultLabel).isEqualTo("main");
+		assertThat(defaultLabel).isEqualTo("master");
 	}
 
 	@Test
