@@ -8,15 +8,17 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 
 @Slf4j
 public class ApiKeyAuthFilter implements Filter {
 
-    @Value("${api.key}")
-    private String validApiKey;
+    private final String validApiKey;
+
+    public ApiKeyAuthFilter(String validApiKey) {
+        this.validApiKey = validApiKey;
+    }
 
     private static final String API_KEY_HEADER = "Authorization";
     private static final String API_KEY_PREFIX = "ApiKey ";

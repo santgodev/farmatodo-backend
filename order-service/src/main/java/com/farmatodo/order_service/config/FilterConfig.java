@@ -2,12 +2,16 @@ package com.farmatodo.order_service.config;
 
 import com.farmatodo.order_service.filter.ApiKeyAuthFilter;
 import com.farmatodo.order_service.filter.MdcFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class FilterConfig {
+
+    @Value("${api.key}")
+    private String validApiKey;
 
     @Bean
     public MdcFilter mdcFilter() {
@@ -16,7 +20,7 @@ public class FilterConfig {
 
     @Bean
     public ApiKeyAuthFilter apiKeyAuthFilter() {
-        return new ApiKeyAuthFilter();
+        return new ApiKeyAuthFilter(validApiKey);
     }
 
     @Bean

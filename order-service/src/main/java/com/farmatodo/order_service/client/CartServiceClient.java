@@ -20,10 +20,10 @@ public class CartServiceClient {
 
     private final RestTemplate restTemplate;
 
-    @Value("${services.cart-service.url}")
+    @Value("${services.cartService.url}")
     private String cartServiceUrl;
 
-    @Value("${services.cart-service.api-key}")
+    @Value("${services.cartService.apiKey}")
     private String cartServiceApiKey;
 
     public CartDTO getCartByUserId(Long userId) {
