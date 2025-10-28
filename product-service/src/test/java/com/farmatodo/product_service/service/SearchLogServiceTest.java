@@ -18,10 +18,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 /**
- * Comprehensive unit tests for SearchLogService focusing on:
- * 1. Asynchronous logging of search queries
- * 2. Verifying repository save() is called with correct data
- * 3. Graceful error handling in async logging
+ * ✅ Unit tests for {@link SearchLogService}
+ *
+ * Focuses on:
+ * 1. Asynchronous logging of search queries.
+ * 2. Verifying repository save() is called with correct data.
+ * 3. Graceful error handling and data integrity validation.
  */
 @ExtendWith(MockitoExtension.class)
 class SearchLogServiceTest {
@@ -49,22 +51,19 @@ class SearchLogServiceTest {
 
     @Test
     void testHandleSearchEvent_ShouldSaveSearchLogToRepository() {
-        // Arrange
         ArgumentCaptor<SearchLog> logCaptor = ArgumentCaptor.forClass(SearchLog.class);
 
         when(searchLogRepository.save(any(SearchLog.class))).thenAnswer(invocation -> {
             SearchLog log = invocation.getArgument(0);
-            log.setId(1L); // Simulate database ID assignment
+            log.setId(1L);
             return log;
         });
 
-        // Act
         searchLogService.handleSearchEvent(searchEvent);
 
-        // Assert - Verify save was called
         verify(searchLogRepository, times(1)).save(logCaptor.capture());
-
         SearchLog savedLog = logCaptor.getValue();
+
         assertThat(savedLog).isNotNull();
         assertThat(savedLog.getSearchTerm()).isEqualTo("aspirin");
         assertThat(savedLog.getResultsCount()).isEqualTo(5);
@@ -75,30 +74,23 @@ class SearchLogServiceTest {
 
     @Test
     void testHandleSearchEvent_VerifyRepositorySaveIsCalled() {
-        // Arrange
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(searchEvent);
 
-        // Assert - This is the key test requirement: verify save() is called
         verify(searchLogRepository, times(1)).save(any(SearchLog.class));
     }
 
     @Test
     void testHandleSearchEvent_ShouldMapAllFieldsCorrectly() {
-        // Arrange
         ArgumentCaptor<SearchLog> logCaptor = ArgumentCaptor.forClass(SearchLog.class);
-
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(searchEvent);
 
-        // Assert
         verify(searchLogRepository).save(logCaptor.capture());
-
         SearchLog savedLog = logCaptor.getValue();
+
         assertThat(savedLog.getSearchTerm()).isEqualTo(searchEvent.getSearchTerm());
         assertThat(savedLog.getResultsCount()).isEqualTo(searchEvent.getResultsCount());
         assertThat(savedLog.getUserIdentifier()).isEqualTo(searchEvent.getUserIdentifier());
@@ -108,7 +100,6 @@ class SearchLogServiceTest {
 
     @Test
     void testHandleSearchEvent_WithEmptySearchTerm_ShouldStillSave() {
-        // Arrange
         SearchEvent emptySearchEvent = SearchEvent.builder()
                 .searchTerm("")
                 .resultsCount(10)
@@ -118,23 +109,19 @@ class SearchLogServiceTest {
                 .build();
 
         ArgumentCaptor<SearchLog> logCaptor = ArgumentCaptor.forClass(SearchLog.class);
-
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(emptySearchEvent);
 
-        // Assert
         verify(searchLogRepository).save(logCaptor.capture());
-
         SearchLog savedLog = logCaptor.getValue();
+
         assertThat(savedLog.getSearchTerm()).isEmpty();
         assertThat(savedLog.getResultsCount()).isEqualTo(10);
     }
 
     @Test
     void testHandleSearchEvent_WithZeroResults_ShouldStillSave() {
-        // Arrange
         SearchEvent noResultsEvent = SearchEvent.builder()
                 .searchTerm("nonexistent")
                 .resultsCount(0)
@@ -144,16 +131,13 @@ class SearchLogServiceTest {
                 .build();
 
         ArgumentCaptor<SearchLog> logCaptor = ArgumentCaptor.forClass(SearchLog.class);
-
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(noResultsEvent);
 
-        // Assert
         verify(searchLogRepository).save(logCaptor.capture());
-
         SearchLog savedLog = logCaptor.getValue();
+
         assertThat(savedLog.getSearchTerm()).isEqualTo("nonexistent");
         assertThat(savedLog.getResultsCount()).isEqualTo(0);
     }
@@ -162,36 +146,27 @@ class SearchLogServiceTest {
 
     @Test
     void testHandleSearchEvent_WhenRepositoryFails_ShouldNotThrowException() {
-        // Arrange
         when(searchLogRepository.save(any(SearchLog.class)))
                 .thenThrow(new RuntimeException("Database connection failed"));
 
-        // Act & Assert - Should not throw exception (graceful degradation)
         try {
             searchLogService.handleSearchEvent(searchEvent);
         } catch (Exception e) {
-            // In a real async method with @Async, exceptions are swallowed
-            // This test verifies the service handles errors gracefully
+            // In real async flow, exception would be swallowed.
         }
 
-        // Verify save was attempted
         verify(searchLogRepository).save(any(SearchLog.class));
     }
 
     @Test
     void testHandleSearchEvent_WhenRepositoryThrowsException_SaveIsStillAttempted() {
-        // Arrange
         when(searchLogRepository.save(any(SearchLog.class)))
                 .thenThrow(new RuntimeException("Persistence exception"));
 
-        // Act
         try {
             searchLogService.handleSearchEvent(searchEvent);
-        } catch (Exception ignored) {
-            // Expected in test environment
-        }
+        } catch (Exception ignored) {}
 
-        // Assert - Verify the service attempted to save despite exception
         verify(searchLogRepository, times(1)).save(any(SearchLog.class));
     }
 
@@ -199,7 +174,6 @@ class SearchLogServiceTest {
 
     @Test
     void testHandleSearchEvent_MultipleEvents_ShouldSaveEachIndependently() {
-        // Arrange
         SearchEvent event1 = SearchEvent.builder()
                 .searchTerm("aspirin")
                 .resultsCount(5)
@@ -218,17 +192,14 @@ class SearchLogServiceTest {
 
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(event1);
         searchLogService.handleSearchEvent(event2);
 
-        // Assert
         verify(searchLogRepository, times(2)).save(any(SearchLog.class));
     }
 
     @Test
     void testHandleSearchEvent_WithNullTransactionId_ShouldHandleGracefully() {
-        // Arrange
         SearchEvent eventWithNullTxnId = SearchEvent.builder()
                 .searchTerm("test")
                 .resultsCount(3)
@@ -238,24 +209,18 @@ class SearchLogServiceTest {
                 .build();
 
         ArgumentCaptor<SearchLog> logCaptor = ArgumentCaptor.forClass(SearchLog.class);
-
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(eventWithNullTxnId);
 
-        // Assert
         verify(searchLogRepository).save(logCaptor.capture());
-
-        SearchLog savedLog = logCaptor.getValue();
-        assertThat(savedLog.getTransactionId()).isNull();
+        assertThat(logCaptor.getValue().getTransactionId()).isNull();
     }
 
     // ==================== DATA INTEGRITY TESTS ====================
 
     @Test
     void testHandleSearchEvent_PreservesSearchTimestamp() {
-        // Arrange
         LocalDateTime specificTime = LocalDateTime.of(2025, 1, 15, 10, 30, 0);
 
         SearchEvent timedEvent = SearchEvent.builder()
@@ -267,23 +232,17 @@ class SearchLogServiceTest {
                 .build();
 
         ArgumentCaptor<SearchLog> logCaptor = ArgumentCaptor.forClass(SearchLog.class);
-
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(timedEvent);
 
-        // Assert
         verify(searchLogRepository).save(logCaptor.capture());
-
-        SearchLog savedLog = logCaptor.getValue();
-        assertThat(savedLog.getSearchedAt()).isEqualTo(specificTime);
+        assertThat(logCaptor.getValue().getSearchedAt()).isEqualTo(specificTime);
     }
 
     @Test
     void testHandleSearchEvent_WithLongSearchTerm_ShouldSave() {
-        // Arrange
-        String longSearchTerm = "a".repeat(500); // Maximum length per entity definition
+        String longSearchTerm = "a".repeat(500);
 
         SearchEvent longTermEvent = SearchEvent.builder()
                 .searchTerm(longSearchTerm)
@@ -294,22 +253,16 @@ class SearchLogServiceTest {
                 .build();
 
         ArgumentCaptor<SearchLog> logCaptor = ArgumentCaptor.forClass(SearchLog.class);
-
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(longTermEvent);
 
-        // Assert
         verify(searchLogRepository).save(logCaptor.capture());
-
-        SearchLog savedLog = logCaptor.getValue();
-        assertThat(savedLog.getSearchTerm()).hasSize(500);
+        assertThat(logCaptor.getValue().getSearchTerm()).hasSize(500);
     }
 
     @Test
     void testHandleSearchEvent_WithSpecialCharacters_ShouldPreserveCharacters() {
-        // Arrange
         String specialSearchTerm = "test!@#$%^&*(){}[]|\\:;\"'<>,.?/~`";
 
         SearchEvent specialEvent = SearchEvent.builder()
@@ -321,16 +274,11 @@ class SearchLogServiceTest {
                 .build();
 
         ArgumentCaptor<SearchLog> logCaptor = ArgumentCaptor.forClass(SearchLog.class);
-
         when(searchLogRepository.save(any(SearchLog.class))).thenReturn(new SearchLog());
 
-        // Act
         searchLogService.handleSearchEvent(specialEvent);
 
-        // Assert
         verify(searchLogRepository).save(logCaptor.capture());
-
-        SearchLog savedLog = logCaptor.getValue();
-        assertThat(savedLog.getSearchTerm()).isEqualTo(specialSearchTerm);
+        assertThat(logCaptor.getValue().getSearchTerm()).isEqualTo(specialSearchTerm);
     }
 }
