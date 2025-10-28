@@ -1,0 +1,309 @@
+<mxfile host="app.diagrams.net" modified="2025-10-27T00:00:00.000Z" agent="Claude Code" version="22.0.0">
+  <diagram name="Farmatodo Architecture" id="architecture">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="Farmatodo Microservices Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="20" width="400" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Config Service Layer -->
+        <mxCell id="config-layer" value="Configuration Management" style="swimlane;fontSize=16;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="100" y="100" width="1400" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-service" value="Config Service&lt;br&gt;(Git Repository)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1" vertex="1" parent="config-layer">
+          <mxGeometry x="200" y="40" width="140" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-server" value="Config Server&lt;br&gt;(Spring Cloud Config)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1" vertex="1" parent="config-layer">
+          <mxGeometry x="500" y="40" width="140" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-connection" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="config-layer" source="config-service" target="config-server">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="200" as="sourcePoint"/>
+            <mxPoint x="650" y="150" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="config-note" value="Centralizes configuration&lt;br&gt;for all microservices" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="config-layer">
+          <mxGeometry x="900" y="50" width="180" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Microservices Layer -->
+        <mxCell id="microservices-layer" value="Microservices" style="swimlane;fontSize=16;fontStyle=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="100" y="290" width="1400" height="250" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="api-gateway" value="API Gateway&lt;br&gt;:8080" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" vertex="1" parent="microservices-layer">
+          <mxGeometry x="50" y="50" width="120" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="client-service" value="Client Service&lt;br&gt;:8081&lt;br&gt;PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="microservices-layer">
+          <mxGeometry x="250" y="50" width="120" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="token-service" value="Token Service&lt;br&gt;:8082&lt;br&gt;PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="microservices-layer">
+          <mxGeometry x="430" y="50" width="120" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="product-service" value="Product Service&lt;br&gt;:8083&lt;br&gt;PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="microservices-layer">
+          <mxGeometry x="610" y="50" width="120" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cart-service" value="Cart Service&lt;br&gt;:8084&lt;br&gt;PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="microservices-layer">
+          <mxGeometry x="790" y="50" width="120" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="order-service" value="Order Service&lt;br&gt;:8085&lt;br&gt;PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="microservices-layer">
+          <mxGeometry x="970" y="50" width="120" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- Config connections to microservices -->
+        <mxCell id="config-to-gateway" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1;dashed=1;dashPattern=3 3;strokeColor=#666666;" edge="1" parent="1" source="config-server" target="api-gateway">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="400" as="sourcePoint"/>
+            <mxPoint x="750" y="350" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="config-to-client" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1;dashed=1;dashPattern=3 3;strokeColor=#666666;" edge="1" parent="1" source="config-server" target="client-service">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="400" as="sourcePoint"/>
+            <mxPoint x="750" y="350" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="config-to-token" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1;dashed=1;dashPattern=3 3;strokeColor=#666666;" edge="1" parent="1" source="config-server" target="token-service">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="400" as="sourcePoint"/>
+            <mxPoint x="750" y="350" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="config-to-product" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1;dashed=1;dashPattern=3 3;strokeColor=#666666;" edge="1" parent="1" source="config-server" target="product-service">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="400" as="sourcePoint"/>
+            <mxPoint x="750" y="350" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="config-to-cart" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1;dashed=1;dashPattern=3 3;strokeColor=#666666;" edge="1" parent="1" source="config-server" target="cart-service">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="400" as="sourcePoint"/>
+            <mxPoint x="750" y="350" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="config-to-order" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1;dashed=1;dashPattern=3 3;strokeColor=#666666;" edge="1" parent="1" source="config-server" target="order-service">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="400" as="sourcePoint"/>
+            <mxPoint x="750" y="350" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- CI/CD Pipeline -->
+        <mxCell id="pipeline-layer" value="CI/CD Pipeline (Jenkins)" style="swimlane;fontSize=16;fontStyle=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="100" y="580" width="1400" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="source-code" value="Source Code&lt;br&gt;(GitHub)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1" vertex="1" parent="pipeline-layer">
+          <mxGeometry x="50" y="50" width="100" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="unit-tests" value="Unit Tests&lt;br&gt;(Maven)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="pipeline-layer">
+          <mxGeometry x="200" y="50" width="100" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="sonarqube" value="SonarQube&lt;br&gt;(Code Quality)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="pipeline-layer">
+          <mxGeometry x="350" y="50" width="100" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="trivy" value="Trivy&lt;br&gt;(Security Scan)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="pipeline-layer">
+          <mxGeometry x="500" y="50" width="100" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="docker-build" value="Docker Build" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="pipeline-layer">
+          <mxGeometry x="650" y="50" width="100" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="push-registry" value="Push to&lt;br&gt;GCP Registry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="pipeline-layer">
+          <mxGeometry x="800" y="50" width="100" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="deploy-gcp" value="Deploy to&lt;br&gt;Cloud Run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1" vertex="1" parent="pipeline-layer">
+          <mxGeometry x="950" y="50" width="100" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Pipeline flow arrows -->
+        <mxCell id="flow1" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="pipeline-layer" source="source-code" target="unit-tests">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="150" as="sourcePoint"/>
+            <mxPoint x="650" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow2" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="pipeline-layer" source="unit-tests" target="sonarqube">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="150" as="sourcePoint"/>
+            <mxPoint x="650" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow3" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="pipeline-layer" source="sonarqube" target="trivy">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="150" as="sourcePoint"/>
+            <mxPoint x="650" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow4" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="pipeline-layer" source="trivy" target="docker-build">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="150" as="sourcePoint"/>
+            <mxPoint x="650" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow5" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="pipeline-layer" source="docker-build" target="push-registry">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="150" as="sourcePoint"/>
+            <mxPoint x="650" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="flow6" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="pipeline-layer" source="push-registry" target="deploy-gcp">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="600" y="150" as="sourcePoint"/>
+            <mxPoint x="650" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="pipeline-note" value="Automated pipeline ensures&lt;br&gt;quality, security, and deployment" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="pipeline-layer">
+          <mxGeometry x="1150" y="60" width="200" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Deployment Environments -->
+        <mxCell id="deployment-layer" value="Deployment Environments" style="swimlane;fontSize=16;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="100" y="820" width="1400" height="280" as="geometry"/>
+        </mxCell>
+
+        <!-- Local Environment -->
+        <mxCell id="local-env" value="Local Development" style="swimlane;fontSize=14;fontStyle=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="deployment-layer">
+          <mxGeometry x="50" y="50" width="600" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="docker-compose" value="Docker Compose" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1" vertex="1" parent="local-env">
+          <mxGeometry x="30" y="50" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="local-containers" value="All Microservices&lt;br&gt;+ PostgreSQL DBs&lt;br&gt;(Containers)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11" vertex="1" parent="local-env">
+          <mxGeometry x="220" y="50" width="150" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="local-flow" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="local-env" source="docker-compose" target="local-containers">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="200" y="150" as="sourcePoint"/>
+            <mxPoint x="250" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="local-note" value="docker-compose.yml&lt;br&gt;Orchestrates all services&lt;br&gt;and databases locally" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="local-env">
+          <mxGeometry x="30" y="130" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Cloud Environment -->
+        <mxCell id="cloud-env" value="Google Cloud Platform (GCP)" style="swimlane;fontSize=14;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="deployment-layer">
+          <mxGeometry x="720" y="50" width="630" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="compute-engine" value="Compute Engine&lt;br&gt;(Orchestration)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1" vertex="1" parent="cloud-env">
+          <mxGeometry x="30" y="50" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cloud-run" value="Cloud Run&lt;br&gt;(Container Platform)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1" vertex="1" parent="cloud-env">
+          <mxGeometry x="230" y="50" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cloud-services" value="Microservices&lt;br&gt;as Cloud Run&lt;br&gt;Services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="cloud-env">
+          <mxGeometry x="430" y="50" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cloud-flow1" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="cloud-env" source="compute-engine" target="cloud-run">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="200" y="150" as="sourcePoint"/>
+            <mxPoint x="250" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="cloud-flow2" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="cloud-env" source="cloud-run" target="cloud-services">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="200" y="150" as="sourcePoint"/>
+            <mxPoint x="250" y="100" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="cloud-note" value="Cloud Run deploys&lt;br&gt;containerized services&lt;br&gt;with auto-scaling&lt;br&gt;Compute Engine manages&lt;br&gt;orchestration" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="cloud-env">
+          <mxGeometry x="30" y="130" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="Legend" style="swimlane;fontSize=12;fontStyle=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1130" width="400" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-config" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="20" y="40" width="15" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-config-text" value="Configuration Services" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="45" y="35" width="150" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-micro" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="20" y="65" width="15" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-micro-text" value="Microservices" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="45" y="60" width="150" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-gateway" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="20" y="90" width="15" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-gateway-text" value="API Gateway / Cloud Run" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="45" y="85" width="150" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-pipeline" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="210" y="40" width="15" height="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-pipeline-text" value="Pipeline Stages" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="235" y="35" width="150" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-dashed" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=1;dashed=1;dashPattern=3 3;strokeColor=#666666;" edge="1" parent="legend">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="210" y="72" as="sourcePoint"/>
+            <mxPoint x="225" y="72" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-dashed-text" value="Configuration Flow" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="235" y="60" width="150" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-solid" value="" style="endArrow=classic;html=1;rounded=0;strokeWidth=2;" edge="1" parent="legend">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="210" y="97" as="sourcePoint"/>
+            <mxPoint x="225" y="97" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-solid-text" value="Process Flow" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="legend">
+          <mxGeometry x="235" y="85" width="150" height="25" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

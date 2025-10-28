@@ -1,0 +1,94 @@
+%% Farmatodo Microservices Architecture with CI/CD Pipeline
+%% This diagram can be viewed using Mermaid Live Editor (https://mermaid.live)
+%% or rendered in GitHub markdown files
+
+graph TB
+    %% Title
+    title[<b>Farmatodo Microservices Architecture</b>]
+
+    %% Configuration Layer
+    subgraph config[" Configuration Management "]
+        direction LR
+        ConfigService["Config Service<br/>(Git Repository)"]
+        ConfigServer["Config Server<br/>(Spring Cloud Config)"]
+        ConfigService -->|"Fetches Config"| ConfigServer
+    end
+
+    %% Microservices Layer
+    subgraph microservices[" Microservices Layer "]
+        direction LR
+        Gateway["API Gateway<br/>:8080"]
+        ClientSvc["Client Service<br/>:8081<br/>PostgreSQL"]
+        TokenSvc["Token Service<br/>:8082<br/>PostgreSQL"]
+        ProductSvc["Product Service<br/>:8083<br/>PostgreSQL"]
+        CartSvc["Cart Service<br/>:8084<br/>PostgreSQL"]
+        OrderSvc["Order Service<br/>:8085<br/>PostgreSQL"]
+    end
+
+    %% Config Server connections to microservices
+    ConfigServer -.->|"Config"| Gateway
+    ConfigServer -.->|"Config"| ClientSvc
+    ConfigServer -.->|"Config"| TokenSvc
+    ConfigServer -.->|"Config"| ProductSvc
+    ConfigServer -.->|"Config"| CartSvc
+    ConfigServer -.->|"Config"| OrderSvc
+
+    %% CI/CD Pipeline
+    subgraph pipeline[" CI/CD Pipeline (Jenkins) "]
+        direction LR
+        SourceCode["Source Code<br/>(GitHub)"]
+        UnitTests["Unit Tests<br/>(Maven)"]
+        Sonar["SonarQube<br/>(Code Quality)"]
+        Trivy["Trivy<br/>(Security Scan)"]
+        DockerBuild["Docker Build"]
+        PushRegistry["Push to<br/>GCP Registry"]
+        DeployGCP["Deploy to<br/>Cloud Run"]
+
+        SourceCode --> UnitTests
+        UnitTests --> Sonar
+        Sonar --> Trivy
+        Trivy --> DockerBuild
+        DockerBuild --> PushRegistry
+        PushRegistry --> DeployGCP
+    end
+
+    %% Deployment Environments
+    subgraph deployment[" Deployment Environments "]
+        direction TB
+
+        subgraph local[" Local Development "]
+            direction LR
+            DockerCompose["Docker Compose"]
+            LocalContainers["All Microservices<br/>+ PostgreSQL DBs<br/>(Containers)"]
+            DockerCompose --> LocalContainers
+        end
+
+        subgraph cloud[" Google Cloud Platform "]
+            direction LR
+            ComputeEngine["Compute Engine<br/>(Orchestration)"]
+            CloudRun["Cloud Run<br/>(Container Platform)"]
+            CloudServices["Microservices<br/>as Cloud Run<br/>Services"]
+
+            ComputeEngine --> CloudRun
+            CloudRun --> CloudServices
+        end
+    end
+
+    %% Flow from pipeline to deployments
+    DeployGCP --> CloudRun
+    SourceCode --> DockerCompose
+
+    %% Styling
+    classDef configStyle fill:#fff2cc,stroke:#d6b656,stroke-width:2px
+    classDef microserviceStyle fill:#ffe6cc,stroke:#d79b00,stroke-width:2px
+    classDef gatewayStyle fill:#f8cecc,stroke:#b85450,stroke-width:2px
+    classDef pipelineStyle fill:#dae8fc,stroke:#6c8ebf,stroke-width:2px
+    classDef deployStyle fill:#d5e8d4,stroke:#82b366,stroke-width:2px
+    classDef cloudStyle fill:#e1d5e7,stroke:#9673a6,stroke-width:2px
+
+    class ConfigService,ConfigServer configStyle
+    class ClientSvc,TokenSvc,ProductSvc,CartSvc,OrderSvc microserviceStyle
+    class Gateway,CloudRun gatewayStyle
+    class UnitTests,Sonar,Trivy,DockerBuild,PushRegistry pipelineStyle
+    class SourceCode,DockerCompose,LocalContainers deployStyle
+    class ComputeEngine,CloudServices,DeployGCP cloudStyle
