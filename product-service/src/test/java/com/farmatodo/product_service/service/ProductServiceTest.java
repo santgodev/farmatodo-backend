@@ -118,14 +118,14 @@ class ProductServiceTest {
 
     @Test
     void testSearchProducts_WithNullQuery_ShouldHandleGracefully() {
-        lenient().when(productRepository.searchProducts(isNull(), anyInt()))
+        lenient().when(productRepository.searchProducts(eq(""), anyInt()))
                 .thenReturn(Collections.emptyList());
 
         ProductSearchResponseDTO response = productService.searchProducts(null, "192.168.1.1");
 
         assertThat(response).isNotNull();
         assertThat(response.getTotalResults()).isEqualTo(0);
-        verify(productRepository).searchProducts(isNull(), anyInt());
+        verify(productRepository).searchProducts(eq(""), anyInt());
     }
 
     @Test
