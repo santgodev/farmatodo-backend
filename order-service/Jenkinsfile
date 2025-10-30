@@ -7,36 +7,19 @@ pipeline {
   }
 
   environment {
-    // ===== Servicio / Imagen local =====
     SERVICE      = 'order-service'
     IMAGE_BASE   = "farmatodo/${SERVICE}"
     IMAGE_TAG    = "${BUILD_NUMBER}"
     IMAGE        = "${IMAGE_BASE}:${IMAGE_TAG}"
 
-    // ===== Red local (solo para dev local si lo usas) =====
     PORT         = '8085'
     HOST         = '8085'
     NET          = 'farmatodo-network'
 
-    // ===== SonarQube =====
     SONAR_SCANNER_HOME = tool 'sonar7'
 
-    // ===== GCP / Artifact Registry / Cloud Run =====
-    GCP_PROJECT_ID = 'planar-momentum-469121-n0'
-    REGION         = 'us-central1'
-    REPOSITORY     = "${SERVICE}-repo"
-    AR_HOST        = "${REGION}-docker.pkg.dev"
-    FULL_IMAGE_NAME = "${AR_HOST}/${GCP_PROJECT_ID}/${REPOSITORY}/${SERVICE}:${IMAGE_TAG}"
-
-    CR_SERVICE     = "${SERVICE}"
-    CR_PLATFORM    = "managed"
-    CR_CPU         = "1"
-    CR_MEMORY      = "512Mi"
-    CR_CONCURRENCY = "80"
-    CR_MIN_INST    = "0"
-    CR_MAX_INST    = "2"
-    CR_PORT        = "${PORT}"
-    CR_ALLOW_UNAUTH = "true"
+    // 📦 Caché persistente para Trivy (evita descargar DB en cada build)
+    TRIVY_CACHE_DIR = '/var/jenkins_home/.trivycache'
   }
 
   options {
@@ -46,7 +29,7 @@ pipeline {
 
   stages {
 
-    // 1) Checkout & Build
+    // 1️⃣ Checkout & Build
     stage('Checkout & Build') {
       steps {
         echo "📦 Clonando repositorio desde GitHub..."
@@ -61,15 +44,15 @@ pipeline {
 
         dir(env.SERVICE) {
           echo "🧱 Compilando y empacando ${SERVICE}..."
-          sh "mvn -q -Dstyle.color=always clean package -DskipTests=true"
+          sh "mvn -q -Dstyle.color=always clean package -DskipTests=false"
         }
       }
     }
 
-    // 2) SonarQube (SAST)
+    // 2️⃣ Análisis con SonarQube
     stage('SonarQube Analysis') {
       steps {
-        echo "🔍 Ejecutando análisis de código con SonarQube..."
+        echo "🔍 Ejecutando análisis estático con SonarQube..."
         dir(env.SERVICE) {
           withCredentials([string(credentialsId: 'sonartoken', variable: 'SONAR_TOKEN')]) {
             withSonarQubeEnv('sonar') {
@@ -87,105 +70,62 @@ pipeline {
       }
     }
 
-    // 3) Trivy FS (antes del build Docker)
+    // 3️⃣ Escaneo de dependencias con Trivy (fuente)
     stage('Trivy Source Scan') {
       steps {
-        echo "🧩 Escaneando dependencias y archivos con Trivy..."
+        echo "🧩 Escaneando dependencias con Trivy (fuente)..."
         dir(env.SERVICE) {
           sh """
-            trivy fs . \
+            export TRIVY_CACHE_DIR=${TRIVY_CACHE_DIR}
+            echo "📦 Usando caché de Trivy: ${TRIVY_CACHE_DIR}"
+
+            trivy fs \
+              --no-progress \
+              --skip-update \
               --format table \
               --severity HIGH,CRITICAL \
-              -o trivy-fs-report.txt || true
+              -o trivy-fs-report.txt \
+              . || true
           """
         }
       }
     }
 
-    // 4) Docker build
-    stage('Build Docker Image') {
+    // 4️⃣ Construcción y prueba local en Docker
+    stage('Build Docker Image & Run Local') {
       steps {
         dir(env.SERVICE) {
-          echo "🐳 Construyendo imagen Docker para ${SERVICE}..."
-          sh "docker build -t ${IMAGE} ."
+          echo "🐳 Construyendo imagen Docker local..."
+          sh """
+            docker build -t ${IMAGE} .
+            docker network inspect ${NET} >/dev/null 2>&1 || docker network create ${NET}
+            docker rm -f ${SERVICE} >/dev/null 2>&1 || true
+            docker run -d --name ${SERVICE} --network ${NET} -p ${HOST}:${PORT} ${IMAGE}
+            echo "✅ ${SERVICE} ejecutándose localmente en http://localhost:${HOST}"
+          """
         }
       }
     }
 
-    // 5) Trivy image
+    // 5️⃣ Escaneo de imagen con Trivy (optimizado)
     stage('Trivy Image Scan') {
       steps {
-        echo "🔎 Escaneando imagen Docker con Trivy..."
-        sh """
-          echo "📋 Resultados del análisis de ${IMAGE}"
-          trivy image ${IMAGE} \
-            --format table \
-            --severity HIGH,CRITICAL \
-            -o trivy-image-report.txt || true
-        """
-      }
-    }
+        echo "🔎 Escaneando vulnerabilidades en la imagen Docker..."
+        dir(env.SERVICE) {
+          sh """
+            export TRIVY_CACHE_DIR=${TRIVY_CACHE_DIR}
+            echo "📦 Reutilizando caché de Trivy: ${TRIVY_CACHE_DIR}"
 
-    // 6) Push a Artifact Registry
-    stage('Push to Artifact Registry') {
-      steps {
-        echo "☁️ Autenticando en GCP y empujando imagen a Artifact Registry..."
-        withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
-          withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-            sh """
-              echo "🔐 Activando cuenta de servicio..."
-              gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-              gcloud config set project "$GCP_PROJECT_ID"
-
-              echo "🧭 Configurando credenciales Docker para Artifact Registry (${AR_HOST})..."
-              gcloud auth configure-docker "$AR_HOST" --quiet
-
-              echo "🏷️ Creando repositorio (idempotente) si no existe..."
-              if ! gcloud artifacts repositories describe "$REPOSITORY" --location="$REGION" --project="$GCP_PROJECT_ID" >/dev/null 2>&1 ; then
-                gcloud artifacts repositories create "$REPOSITORY" \
-                  --repository-format=docker \
-                  --location="$REGION" \
-                  --description="Docker repo for $SERVICE" \
-                  --project="$GCP_PROJECT_ID"
-              fi
-
-              echo "🏷️ Etiquetando imagen local -> ${FULL_IMAGE_NAME}"
-              docker tag "$IMAGE" "$FULL_IMAGE_NAME"
-
-              echo "📤 Pushing ${FULL_IMAGE_NAME}..."
-              docker push "$FULL_IMAGE_NAME"
-            """
-          }
-        }
-      }
-    }
-
-    // 7) Deploy a Cloud Run
-    stage('Deploy to Cloud Run') {
-      steps {
-        echo "🚀 Desplegando ${SERVICE} en Cloud Run..."
-        withCredentials([file(credentialsId: 'gcp-credentials', variable: 'gcpCred')]) {
-          withEnv(["GOOGLE_APPLICATION_CREDENTIALS=$gcpCred"]) {
-            sh """
-              echo "🔐 Activando cuenta de servicio..."
-              gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-              gcloud config set project "$GCP_PROJECT_ID"
-
-              echo "🚀 gcloud run deploy ${CR_SERVICE}"
-              gcloud run deploy "$CR_SERVICE" \
-                --image="$FULL_IMAGE_NAME" \
-                --region="$REGION" \
-                --platform="$CR_PLATFORM" \
-                --port="$CR_PORT" \
-                --memory="$CR_MEMORY" \
-                --cpu="$CR_CPU" \
-                --concurrency="$CR_CONCURRENCY" \
-                --min-instances="$CR_MIN_INST" \
-                --max-instances="$CR_MAX_INST" \
-                --allow-unauthenticated \
-                --quiet
-            """
-          }
+            trivy image \
+              --no-progress \
+              --skip-update \
+              --light \
+              --timeout 10m \
+              --format table \
+              --severity HIGH,CRITICAL \
+              -o trivy-image-report.txt \
+              ${IMAGE} || true
+          """
         }
       }
     }
@@ -193,7 +133,7 @@ pipeline {
 
   post {
     success {
-      echo "✅ Build, análisis y despliegue completados con éxito para ${SERVICE}!"
+      echo "✅ Build, análisis y pruebas locales completadas con éxito para ${SERVICE}!"
     }
     failure {
       echo "❌ Falló el pipeline de ${SERVICE}!"
