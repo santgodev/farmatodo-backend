@@ -7,6 +7,7 @@ import com.farmatodo.client_service.exception.BusinessException;
 import com.farmatodo.client_service.model.Client;
 import com.farmatodo.client_service.repository.ClientRepository;
 import com.farmatodo.client_service.util.ClientValidator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,6 +65,12 @@ class ClientServiceTest {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clean up MDC to prevent thread pollution in Jenkins parallel test execution
+        MDC.clear();
     }
 
     @Test

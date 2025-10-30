@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: client-service-test
+
+  # Disable Spring Cloud Config for tests
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+
+  # Use H2 in-memory database for tests
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  # Disable SQL logging in tests for cleaner output
+  sql:
+    init:
+      mode: never
+
+# API Key for tests
+api:
+  key: test-api-key-12345
+
+# Logging configuration for tests
+logging:
+  level:
+    com.farmatodo.client_service: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{transactionId}] %-5level %logger{36} - %msg%n"
