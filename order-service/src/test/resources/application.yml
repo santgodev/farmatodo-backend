@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: order-service-test
+
+  # Disable Spring Cloud Config for tests
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
+
+  # Use H2 in-memory database for tests
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  sql:
+    init:
+      mode: never
+
+# Service URLs for tests
+client:
+  service:
+    url: http://localhost:8081
+
+token:
+  service:
+    url: http://localhost:8082
+
+product:
+  service:
+    url: http://localhost:8083
+
+# Payment configuration for tests
+payment:
+  rejectionProbability: 0.0
+  retryCount: 1
+
+# Logging configuration for tests
+logging:
+  level:
+    com.farmatodo.order_service: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN

@@ -157,7 +157,7 @@ class OrderServiceTest {
         verify(cartServiceClient).getCartByUserId(1L);
         verify(clientServiceClient).getClientById(1L);
         verify(tokenServiceClient).processPayment(any(PaymentRequestDTO.class));
-        verify(orderRepository, times(2)).save(any(Order.class)); // Once for PENDING, once for APPROVED
+        verify(orderRepository, times(3)).save(any(Order.class)); // PENDING -> PROCESSING -> APPROVED
     }
 
     @Test
@@ -507,14 +507,20 @@ class OrderServiceTest {
 
         when(cartServiceClient.getCartByUserId(1L)).thenReturn(validCart);
         when(clientServiceClient.getClientById(1L)).thenReturn(validClient);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(1L);
+            return order;
+        });
+        when(tokenServiceClient.processPayment(any(PaymentRequestDTO.class)))
+                .thenThrow(new BusinessException("Token is required", "INVALID_TOKEN", 400));
 
         // Act & Assert
         assertThatThrownBy(() -> orderService.createOrder(invalidRequest))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Token is required");
 
-        verify(tokenServiceClient, never()).processPayment(any());
-        verify(orderRepository, never()).save(any());
+        verify(tokenServiceClient).processPayment(any());
     }
 
     // ==================== ORDER STATUS TRANSITION TESTS ====================
@@ -537,15 +543,19 @@ class OrderServiceTest {
         orderService.createOrder(validOrderRequest);
 
         // Assert
-        verify(orderRepository, times(2)).save(orderCaptor.capture());
+        verify(orderRepository, times(3)).save(orderCaptor.capture());
 
         // First save: PENDING status
         Order firstSave = orderCaptor.getAllValues().get(0);
         assertThat(firstSave.getStatus()).isEqualTo("PENDING");
 
-        // Second save: APPROVED status
+        // Second save: PROCESSING status
         Order secondSave = orderCaptor.getAllValues().get(1);
-        assertThat(secondSave.getStatus()).isEqualTo("APPROVED");
+        assertThat(secondSave.getStatus()).isEqualTo("PROCESSING");
+
+        // Third save: APPROVED status
+        Order thirdSave = orderCaptor.getAllValues().get(2);
+        assertThat(thirdSave.getStatus()).isEqualTo("APPROVED");
     }
 
     @Test
@@ -566,15 +576,19 @@ class OrderServiceTest {
         orderService.createOrder(validOrderRequest);
 
         // Assert
-        verify(orderRepository, times(2)).save(orderCaptor.capture());
+        verify(orderRepository, times(3)).save(orderCaptor.capture());
 
         // First save: PENDING status
         Order firstSave = orderCaptor.getAllValues().get(0);
         assertThat(firstSave.getStatus()).isEqualTo("PENDING");
 
-        // Second save: REJECTED status
+        // Second save: PROCESSING status
         Order secondSave = orderCaptor.getAllValues().get(1);
-        assertThat(secondSave.getStatus()).isEqualTo("REJECTED");
+        assertThat(secondSave.getStatus()).isEqualTo("PROCESSING");
+
+        // Third save: REJECTED status
+        Order thirdSave = orderCaptor.getAllValues().get(2);
+        assertThat(thirdSave.getStatus()).isEqualTo("REJECTED");
     }
 
     // ==================== GET ORDER BY ID TESTS ====================

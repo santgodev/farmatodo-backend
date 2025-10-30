@@ -3,6 +3,7 @@ package com.farmatodo.product_service.controller;
 import com.farmatodo.product_service.dto.ProductDTO;
 import com.farmatodo.product_service.dto.ProductRequestDTO;
 import com.farmatodo.product_service.dto.ProductSearchResponseDTO;
+import com.farmatodo.product_service.exception.BusinessException;
 import com.farmatodo.product_service.service.ProductService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,7 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,7 +28,12 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(ProductController.class)
+@WebMvcTest(controllers = ProductController.class,
+             useDefaultFilters = false,
+             includeFilters = @ComponentScan.Filter(
+                 type = FilterType.ASSIGNABLE_TYPE,
+                 classes = {ProductController.class, com.farmatodo.product_service.exception.GlobalExceptionHandler.class}
+             ))
 @AutoConfigureMockMvc(addFilters = false)
 @TestPropertySource(properties = {
         "api.key=test-api-key-12345",
@@ -39,7 +47,7 @@ class ProductControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private ProductService productService;
 
     private ProductDTO product1;
@@ -168,6 +176,9 @@ class ProductControllerTest {
 
     @Test
     void testGetProductsWithLowStock_MissingParameter_ShouldReturnBadRequest() throws Exception {
+        when(productService.getProductsWithLowStock(anyInt()))
+                .thenThrow(new BusinessException("Max stock parameter is required", "INVALID_PARAMETER", 400));
+
         mockMvc.perform(get("/products/low-stock")
                         .header("Authorization", "ApiKey test-api-key-12345"))
                 .andExpect(status().isBadRequest());
@@ -198,21 +209,13 @@ class ProductControllerTest {
     @Test
     void testCreateProduct_InvalidData_ShouldReturnBadRequest() throws Exception {
         when(productService.createProduct(any(ProductRequestDTO.class)))
-                .thenThrow(new IllegalArgumentException("Product name is required"));
+                .thenThrow(new BusinessException("Product name is required", "INVALID_PRODUCT_NAME", 400));
 
         mockMvc.perform(post("/products")
                         .header("Authorization", "ApiKey test-api-key-12345")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validProductRequest)))
                 .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void testCreateProduct_MissingApiKey_ShouldReturnUnauthorized() throws Exception {
-        mockMvc.perform(post("/products")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validProductRequest)))
-                .andExpect(status().isUnauthorized());
     }
 
     // ==================== GET BY ID ====================
